@@ -26,8 +26,8 @@ Pour faire fonctionner ce projet en local sur votre machine, suivez ces étapes 
 
 1.  **Clonez le dépôt :**
     ```bash
-    git clone [URL_DE_VOTRE_DEPOT]
-    cd linkedin-creator
+    git clone https://github.com/Lofp34/-linkedin.git
+    cd -linkedin
     ```
 
 2.  **Installez les dépendances :**
