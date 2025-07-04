@@ -108,9 +108,48 @@ function App() {
   };
 
   const handleUpdatePerson = async (personData) => {
-    console.log("Updating person:", personData);
-    // TODO: Implement Supabase logic
-    await fetchAllData();
+    try {
+      setLoading(true);
+      const { id: personId, tags: tagNames } = personData;
+
+      // 1. Delete existing tag associations for the person
+      const { error: deleteError } = await supabase
+        .from('person_tags')
+        .delete()
+        .eq('person_id', personId);
+
+      if (deleteError) throw deleteError;
+
+      // 2. Get IDs for the new tags
+      if (tagNames && tagNames.length > 0) {
+        const { data: tagsData, error: tagsError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('name', tagNames);
+      
+        if (tagsError) throw tagsError;
+
+        // 3. Create new associations in the join table
+        const associations = tagsData.map(tag => ({
+          person_id: personId,
+          tag_id: tag.id
+        }));
+
+        if (associations.length > 0) {
+          const { error: assocError } = await supabase.from('person_tags').insert(associations);
+          if (assocError) throw assocError;
+        }
+      }
+
+      // 4. Refresh all data from the server
+      await fetchAllData();
+      
+    } catch (error) {
+      console.error("Error updating person:", error);
+    } finally {
+      setLoading(false);
+      setEditingPerson(null); // Close the modal on success
+    }
   };
 
   const handleDeletePerson = async (personId) => {
@@ -171,30 +210,70 @@ function App() {
     alert(`Import terminé !\n- ${importedCount} personne(s) ajoutée(s)\n- ${duplicateCount} doublon(s) ignoré(s)`);
   };
 
-  const handleBulkAddTags = (tagsToAdd) => {
-    setPeople(prevPeople =>
-        prevPeople.map(person => {
-            if (selectedPeople.has(person.id)) {
-                const updatedTags = new Set([...person.tags, ...tagsToAdd]);
-                return { ...person, tags: Array.from(updatedTags).sort() };
-            }
-            return person;
-        })
-    );
-    setIsBulkEditModalOpen(false);
+  const handleBulkAddTags = async (tagsToAdd) => {
+    try {
+      setLoading(true);
+
+      const { data: tagsData, error: tagsError } = await supabase
+        .from('tags')
+        .select('id, name')
+        .in('name', tagsToAdd);
+
+      if (tagsError) throw tagsError;
+      const tagIds = tagsData.map(t => t.id);
+
+      const associations = Array.from(selectedPeople).flatMap(personId =>
+        tagIds.map(tagId => ({ person_id: personId, tag_id: tagId }))
+      );
+
+      if (associations.length > 0) {
+        // Use upsert to add tags, ignoring any that would create a duplicate
+        const { error: assocError } = await supabase
+          .from('person_tags')
+          .upsert(associations, { onConflict: 'person_id, tag_id' });
+        if (assocError) throw assocError;
+      }
+
+      await fetchAllData();
+    } catch (error) {
+      console.error("Error bulk adding tags:", error);
+    } finally {
+      setLoading(false);
+      setIsBulkEditModalOpen(false);
+      setSelectedPeople(new Set());
+    }
   };
 
-  const handleBulkRemoveTags = (tagsToRemove) => {
-      setPeople(prevPeople =>
-          prevPeople.map(person => {
-              if (selectedPeople.has(person.id)) {
-                  const updatedTags = person.tags.filter(tag => !tagsToRemove.includes(tag));
-                  return { ...person, tags: updatedTags };
-              }
-              return person;
-          })
-      );
+  const handleBulkRemoveTags = async (tagsToRemove) => {
+    try {
+      setLoading(true);
+
+      const { data: tagsData, error: tagsError } = await supabase
+        .from('tags')
+        .select('id')
+        .in('name', tagsToRemove);
+
+      if (tagsError) throw tagsError;
+      const tagIdsToRemove = tagsData.map(t => t.id);
+
+      if (tagIdsToRemove.length > 0 && selectedPeople.size > 0) {
+        const { error: deleteError } = await supabase
+          .from('person_tags')
+          .delete()
+          .in('person_id', Array.from(selectedPeople))
+          .in('tag_id', tagIdsToRemove);
+        
+        if (deleteError) throw deleteError;
+      }
+
+      await fetchAllData();
+    } catch (error) {
+      console.error("Error bulk removing tags:", error);
+    } finally {
+      setLoading(false);
       setIsBulkEditModalOpen(false);
+      setSelectedPeople(new Set());
+    }
   };
 
   const handleDeleteTag = (tagToDelete) => {
