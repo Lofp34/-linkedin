@@ -174,16 +174,6 @@ textarea {
     gap: 5px;
 }
 
-.tags-container .tag {
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.tags-container .tag:hover {
-    background-color: var(--primary-color);
-    color: white;
-}
-
 .tag {
     background-color: #e0e0e0;
     color: #555;
@@ -199,7 +189,7 @@ textarea {
     background-color: #c7c7c7;
 }
 
-.tag.active {
+.tag.active, .tag.active:hover {
     background-color: var(--primary-color);
     color: white;
 }

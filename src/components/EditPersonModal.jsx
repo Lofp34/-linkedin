@@ -4,37 +4,45 @@ import Tag from './Tag';
 const EditPersonModal = ({ person, onUpdate, onCancel, existingTags }) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
-  const [tags, setTags] = useState('');
+  const [personTags, setPersonTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
 
-  // When the 'person' prop changes, update the form's state
   useEffect(() => {
     if (person) {
       setFirstname(person.firstname);
       setLastname(person.lastname);
-      setTags(person.tags.join(', '));
+      setPersonTags(person.tags || []);
     }
   }, [person]);
 
-  if (!person) {
-    return null; // Don't render anything if no person is being edited
-  }
+  if (!person) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const updatedPerson = {
-      ...person,
-      firstname: firstname.trim(),
-      lastname: lastname.trim(),
-      tags: tags.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean)
-    };
+    const updatedPerson = { ...person, firstname: firstname.trim(), lastname: lastname.trim(), tags: personTags };
     onUpdate(updatedPerson);
   };
+
+  const handleToggleTag = (tag) => {
+    setPersonTags(prevTags => 
+      prevTags.includes(tag)
+        ? prevTags.filter(t => t !== tag)
+        : [...prevTags, tag]
+    );
+  };
   
-  const addTagToInput = (tag) => {
-    let currentTags = tags.split(',').map(t => t.trim()).filter(Boolean);
-    if (!currentTags.some(t => t.toLowerCase() === tag.toLowerCase())) {
-        currentTags.push(tag);
-        setTags(currentTags.join(', '));
+  const handleAddNewTag = () => {
+    const tagToAdd = newTag.trim().toLowerCase();
+    if (tagToAdd && !personTags.includes(tagToAdd)) {
+        setPersonTags([...personTags, tagToAdd]);
+    }
+    setNewTag('');
+  };
+
+  const handleNewTagKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddNewTag();
     }
   };
 
@@ -65,18 +73,35 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags }) => {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="edit-tags">Tags</label>
-            <input
-              type="text"
-              id="edit-tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-            />
-            <small>Séparez les tags par des virgules, ou cliquez sur un tag existant.</small>
+            <label>Tags</label>
+            <div className="tags-container">
+              {personTags.map(tag => (
+                <Tag key={tag} className="active" onClick={() => handleToggleTag(tag)}>
+                  {tag}
+                </Tag>
+              ))}
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Cliquer pour ajouter/retirer un tag existant :</label>
             <div className="tags-container" style={{ marginTop: '10px' }}>
-                {existingTags.map(tag => (
-                  <Tag key={tag} onClick={() => addTagToInput(tag)}>{tag}</Tag>
-                ))}
+              {existingTags.filter(t => !personTags.includes(t)).map(tag => (
+                <Tag key={tag} onClick={() => handleToggleTag(tag)}>{tag}</Tag>
+              ))}
+            </div>
+          </div>
+          <div className="form-group">
+            <label htmlFor="edit-new-tag">Créer un nouveau tag</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="text"
+                id="edit-new-tag"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={handleNewTagKeyDown}
+                placeholder="Nouveau tag..."
+              />
+              <button type="button" className="button secondary" onClick={handleAddNewTag}>Ajouter</button>
             </div>
           </div>
           <button type="submit" className="button">Enregistrer</button>

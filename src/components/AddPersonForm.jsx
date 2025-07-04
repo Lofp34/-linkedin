@@ -4,7 +4,8 @@ import Tag from './Tag';
 const AddPersonForm = ({ onAddPerson, existingTags }) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
-  const [tags, setTags] = useState('');
+  const [personTags, setPersonTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -14,22 +15,37 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
       id: Date.now(),
       firstname: firstname.trim(),
       lastname: lastname.trim(),
-      tags: tags.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag)
+      tags: personTags
     };
     onAddPerson(newPerson);
 
     // Reset form
     setFirstname('');
     setLastname('');
-    setTags('');
+    setPersonTags([]);
+    setNewTag('');
   };
 
-  const addTagToInput = (tag) => {
-    let currentTags = tags.split(',').map(t => t.trim()).filter(t => t);
-    const tagExists = currentTags.some(t => t.toLowerCase() === tag.toLowerCase());
-    if (!tagExists) {
-        currentTags.push(tag);
-        setTags(currentTags.join(', '));
+  const handleToggleTag = (tag) => {
+    setPersonTags(prevTags => 
+      prevTags.includes(tag)
+        ? prevTags.filter(t => t !== tag)
+        : [...prevTags, tag]
+    );
+  };
+  
+  const handleAddNewTag = () => {
+    const tagToAdd = newTag.trim().toLowerCase();
+    if (tagToAdd && !personTags.includes(tagToAdd)) {
+        setPersonTags([...personTags, tagToAdd]);
+    }
+    setNewTag(''); // Clear input after adding
+  };
+
+  const handleNewTagKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form submission
+      handleAddNewTag();
     }
   };
 
@@ -58,22 +74,38 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="tags">Tags</label>
-          <input
-            type="text"
-            id="tags"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="ex: influenceur, vente, paris"
-          />
-          <small>Séparez les tags par des virgules, ou cliquez sur un tag existant pour l'ajouter.</small>
-          <div className="tags-container" style={{ marginTop: '10px' }}>
-            {existingTags.map(tag => (
-              <Tag key={tag} onClick={() => addTagToInput(tag)}>{tag}</Tag>
+          <label>Tags</label>
+          <div className="tags-container">
+            {personTags.map(tag => (
+                <Tag key={tag} className="active" onClick={() => handleToggleTag(tag)}>
+                    {tag}
+                </Tag>
             ))}
           </div>
         </div>
-        <button type="submit">Ajouter la personne</button>
+        <div className="form-group">
+          <label>Cliquer pour ajouter/retirer un tag existant :</label>
+           <div className="tags-container" style={{ marginTop: '10px' }}>
+            {existingTags.filter(t => !personTags.includes(t)).map(tag => (
+              <Tag key={tag} onClick={() => handleToggleTag(tag)}>{tag}</Tag>
+            ))}
+          </div>
+        </div>
+        <div className="form-group">
+            <label htmlFor="new-tag">Créer un nouveau tag</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                    type="text"
+                    id="new-tag"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={handleNewTagKeyDown}
+                    placeholder="Nouveau tag..."
+                />
+                <button type="button" className="button secondary" onClick={handleAddNewTag}>Ajouter</button>
+            </div>
+        </div>
+        <button type="submit">Enregistrer la personne</button>
       </form>
     </section>
   );
