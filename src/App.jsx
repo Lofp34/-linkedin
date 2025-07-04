@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { supabase } from './supabaseClient'; 
+import { supabase } from './supabaseClient';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 import AddPersonForm from './components/AddPersonForm';
 import PersonList from './components/PersonList';
 import FilteredResult from './components/FilteredResult';
@@ -12,6 +14,7 @@ import BulkEditTagsModal from './components/BulkEditTagsModal';
 import TagCreator from './components/TagCreator';
 
 function App() {
+  const [session, setSession] = useState(null);
   const [people, setPeople] = useState([]);
   const [allUniqueTags, setAllUniqueTags] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +25,22 @@ function App() {
   const [selectedPeople, setSelectedPeople] = useState(new Set());
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const fetchAllData = useCallback(async () => {
+    if (!session) return; // Don't fetch if no user is logged in
     setLoading(true);
     try {
       // Fetch people with their tags
@@ -58,7 +76,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     fetchAllData();
@@ -187,27 +205,44 @@ function App() {
     }
   };
 
-  const handleImport = (importedPeople) => {
-    let newPeople = [...people];
-    let importedCount = 0;
-    let duplicateCount = 0;
+  const handleImport = async (importedPeople) => {
+    setLoading(true);
+    try {
+      const existingNames = new Set(people.map(p => `${p.firstname.trim().toLowerCase()},${p.lastname.trim().toLowerCase()}`));
+      
+      const peopleToInsert = importedPeople
+        .map(p => ({
+          ...p,
+          firstname: p.firstname.trim(),
+          lastname: p.lastname.trim()
+        }))
+        .filter(p => {
+          const normalizedName = `${p.firstname.toLowerCase()},${p.lastname.toLowerCase()}`;
+          return !existingNames.has(normalizedName);
+        });
 
-    const existingNames = new Set(people.map(p => `${p.firstname.trim().toLowerCase()},${p.lastname.trim().toLowerCase()}`));
+      const duplicateCount = importedPeople.length - peopleToInsert.length;
 
-    importedPeople.forEach(importedPerson => {
-      const normalizedName = `${importedPerson.firstname.toLowerCase()},${importedPerson.lastname.toLowerCase()}`;
-      if (existingNames.has(normalizedName)) {
-        duplicateCount++;
-      } else {
-        const personWithId = { ...importedPerson, id: Date.now() + Math.random() };
-        newPeople.push(personWithId);
-        existingNames.add(normalizedName);
-        importedCount++;
+      if (peopleToInsert.length > 0) {
+        // We only need to insert firstname and lastname. Tags are empty by default.
+        const { error } = await supabase
+          .from('people')
+          .insert(peopleToInsert.map(({ firstname, lastname }) => ({ firstname, lastname })));
+        
+        if (error) throw error;
       }
-    });
+      
+      // Refresh all data from the server
+      await fetchAllData();
+      
+      alert(`Import terminé !\n- ${peopleToInsert.length} personne(s) ajoutée(s)\n- ${duplicateCount} doublon(s) ignoré(s)`);
 
-    setPeople(newPeople);
-    alert(`Import terminé !\n- ${importedCount} personne(s) ajoutée(s)\n- ${duplicateCount} doublon(s) ignoré(s)`);
+    } catch(error) {
+      console.error("Error importing people:", error);
+      alert("Une erreur est survenue lors de l'importation.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBulkAddTags = async (tagsToAdd) => {
@@ -341,30 +376,69 @@ function App() {
     });
   }, [people, selectedTags]);
 
-  if (loading) {
-    return <div className="container"><h1>Chargement des données...</h1></div>;
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error logging out:", error);
+    } else {
+      // Session will be set to null by onAuthStateChange listener
+      // and we clear the local state
+      setPeople([]);
+      setAllUniqueTags([]);
+      setSelectedTags(new Set());
+      setManualSelection([]);
+      setSelectedPeople(new Set());
+    }
+  };
+
+  if (!session) {
+    return (
+      <div className="auth-container">
+        <h1>LinkedIn Tag Manager</h1>
+        <div className="auth-widget">
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            providers={['google']}
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: 'Adresse e-mail',
+                  password_label: 'Mot de passe',
+                  button_label: 'Se connecter',
+                  social_provider_text: 'Se connecter avec {{provider}}',
+                  link_text: 'Vous avez déjà un compte ? Connectez-vous',
+                },
+                sign_up: {
+                  email_label: 'Adresse e-mail',
+                  password_label: 'Mot de passe',
+                  button_label: 'S\'inscrire',
+                  social_provider_text: 'S\'inscrire avec {{provider}}',
+                  link_text: 'Vous n\'avez pas de compte ? Inscrivez-vous',
+                },
+                forgotten_password: {
+                  email_label: 'Adresse e-mail',
+                  password_label: 'Mot de passe',
+                  button_label: 'Réinitialiser le mot de passe',
+                  link_text: 'Mot de passe oublié ?',
+                }
+              },
+            }}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="container">
-      <div className="title-container">
+      <header>
         <h1>LinkedIn Tag Manager</h1>
-        <svg 
-          onClick={() => setIsSettingsModalOpen(true)}
-          className="settings-icon"
-          xmlns="http://www.w3.org/2000/svg" 
-          width="24" height="24" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          <path d="M19.14,12.94c0.04,0.3,0.06,0.61,0.06,0.92c0,0.31-0.02,0.62-0.06,0.92l2.07,1.62c0.18,0.14,0.23,0.41,0.12,0.61 l-1.92,3.32c-0.12,0.2-0.37,0.26-0.59,0.18l-2.48-1c-0.52,0.4-1.08,0.73-1.69,0.98l-0.38,2.65c-0.03,0.24-0.24,0.42-0.48,0.42 h-3.84c-0.24,0-0.45-0.18-0.48-0.42l-0.38-2.65c-0.61-0.25-1.17-0.59-1.69-0.98l-2.48,1c-0.22,0.08-0.47,0.02-0.59-0.18 l-1.92-3.32c-0.12-0.2-0.07-0.47,0.12-0.61L4.8,13.86C4.76,13.56,4.74,13.26,4.74,12.96s0.02-0.6,0.06-0.89L2.69,10.43 c-0.18-0.14-0.23-0.41-0.12-0.61l1.92-3.32c0.12-0.2,0.37-0.26,0.59-0.18l2.48,1c0.52-0.4,1.08-0.73,1.69-0.98L9.6,3.62 C9.63,3.38,9.84,3.2,10.08,3.2h3.84c0.24,0,0.45,0.18,0.48,0.42l0.38,2.65c0.61,0.25,1.17,0.59,1.69,0.98l2.48-1 c0.22-0.08,0.47,0.02,0.59,0.18l1.92,3.32c0.12,0.2,0.07,0.47-0.12,0.61L19.14,12.94z"/>
-          <circle cx="12" cy="12" r="3.5"/>
-        </svg>
-      </div>
+        <div className="header-controls">
+          <button onClick={handleLogout} className="button secondary">Déconnexion</button>
+          <button className="settings-button" onClick={() => setIsSettingsModalOpen(true)} title="Gérer les tags">⚙️</button>
+        </div>
+      </header>
       
       <AddPersonForm onAddPerson={handleAddPerson} existingTags={allUniqueTags} />
       

@@ -1,0 +1,29 @@
+# Guide de l'Interface Utilisateur (UI)
+
+La cohérence visuelle est essentielle pour que l'application soit perçue comme professionnelle et facile à utiliser.
+
+## 1. Cohérence des Composants
+Un même type d'interaction doit toujours être présenté de la même manière.
+
+- **Gestion des Tags :** Le système de sélection/désélection de tags cliquables doit être utilisé partout (filtrage, ajout/modification de contact, édition en masse). Le composant réutilisable est `[src/components/Tag.jsx](mdc:src/components/Tag.jsx)`.
+- **Modales :** Toutes les fenêtres modales (`EditPersonModal`, `SettingsModal`, `BulkEditTagsModal`) doivent partager une apparence et un comportement similaires (bouton de fermeture, fond grisé, etc.).
+
+## 2. Palette de Couleurs et Styles
+Le style est défini dans `[src/index.css](mdc:src/index.css)` et se veut simple et fonctionnel.
+
+- **Couleurs Primaires :**
+    - **Action principale (boutons) :** `#007bff` (bleu)
+    - **Texte :** `#333` (gris foncé)
+    - **Fond :** `#fff` (blanc)
+    - **Bordures / Séparateurs :** `#ddd` (gris clair)
+- **Tags :** Les tags ont des couleurs spécifiques pour indiquer leur état (sélectionné, non sélectionné).
+
+## 3. Typographie
+La police de caractères est une police sans-serif standard pour une lisibilité maximale sur tous les écrans. La hiérarchie visuelle est créée en utilisant différentes tailles et graisses de police (par exemple, `<h1>` pour le titre principal, `<h2>` pour les sections).
+
+## 4. Layout
+L'application utilise un layout simple en conteneur centré avec une largeur maximale pour une bonne lisibilité sur les grands écrans. Les éléments sont organisés en sections logiques (`<section>`).
+description:
+globs:
+alwaysApply: false
+---

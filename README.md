@@ -1,33 +1,40 @@
-# 🚀 LinkedIn Tag Manager Pro
+# 🚀 LinkedIn @-Creator : Votre Assistant de Ciblage Intelligent
 
-Une application web simple et puissante pour gérer et générer des listes de mentions `@` pour vos posts LinkedIn, conçue pour vous faire gagner un temps précieux.
+Cette application web est conçue pour transformer la manière dont vous interagissez sur LinkedIn. Fini les listes de mentions génériques ! Avec **LinkedIn @-Creator**, vous pouvez gérer vos contacts, les segmenter avec une précision chirurgicale grâce à un système de tags avancé, et générer des listes de mentions `@` ultra-pertinentes pour maximiser l'impact de vos publications.
 
-![Aperçu de l'application](https://i.imgur.com/your-screenshot.png) <!-- Pensez à remplacer ce lien par une vraie capture d'écran ! -->
+L'objectif ? Vous permettre d'atteindre les bonnes personnes, avec finesse et pertinence, pour chaque post.
 
-## ✨ Fonctionnalités
+## ✨ Fonctionnalités Principales
 
-- **Gestion de Contacts :** Ajoutez, modifiez et supprimez facilement des contacts.
-- **Taggage Intelligent :** Associez des tags (ex: `influenceur`, `vente`, `paris`) à vos contacts pour les organiser.
-- **Import CSV :** Initialisez votre liste de contacts en quelques secondes grâce à un import de fichiers CSV, avec détection automatique des doublons.
-- **Filtrage Interactif :** Générez des listes de mentions en cliquant simplement sur les tags qui vous intéressent.
-- **Sélection Manuelle :** Créez des listes personnalisées à la volée en ajoutant des contacts un par un.
-- **Copie Facile :** Un clic pour copier la liste générée, prête à être collée dans votre post LinkedIn.
-- **Persistance des Données :** Tout est sauvegardé localement dans votre navigateur grâce au `localStorage`.
+- **Authentification Sécurisée :** Créez votre compte et retrouvez vos données en toute sécurité depuis n'importe où.
+- **Gestion de Contacts Simplifiée :** Ajoutez, modifiez et supprimez vos contacts intuitivement.
+- **Taggage Stratégique :**
+    - Créez une bibliothèque de tags personnalisés (`#React`, `#Marketing`, `#CEO`, `#Paris`, etc.).
+    - Attribuez plusieurs tags à chaque contact pour une segmentation fine.
+- **Import en Masse via CSV :** Importez votre liste de contacts existante en un clin d'œil. L'application détecte et écarte les doublons pour garder votre base de données propre.
+- **Filtrage Dynamique :** Sélectionnez un ou plusieurs tags pour générer instantanément une liste de contacts correspondants.
+- **Actions Groupées :**
+    - Sélectionnez plusieurs contacts directement depuis la liste.
+    - Ajoutez ou supprimez des tags en masse pour des mises à jour rapides.
+    - Supprimez plusieurs contacts en une seule action.
+- **Gestion Globale des Tags :** "Nettoyez" ou supprimez des tags de l'ensemble de votre base de données via un panneau de réglages dédié.
+- **Backend Robuste avec Supabase :** Toutes vos données (comptes, contacts, tags) sont stockées de manière persistante et sécurisée dans une base de données cloud.
 
 ## 🛠️ Stack Technique
 
-- **Framework :** [React](https://react.dev/) (via [Vite](https://vitejs.dev/))
-- **Langage :** JavaScript (ES6+)
-- **Styling :** CSS pur
+- **Frontend :** [React](https://react.dev/) (initialisé avec [Vite](https://vitejs.dev/))
+- **Backend & Base de Données :** [Supabase](https://supabase.io/) (PostgreSQL)
+- **Authentification :** Supabase Auth
+- **Styling :** CSS pur pour une personnalisation simple et rapide.
 
-## ⚙️ Installation et Lancement
+## ⚙️ Installation et Configuration
 
-Pour faire fonctionner ce projet en local sur votre machine, suivez ces étapes :
+Pour lancer ce projet en local, suivez ces étapes :
 
 1.  **Clonez le dépôt :**
     ```bash
-    git clone https://github.com/Lofp34/-linkedin.git
-    cd -linkedin
+    git clone [URL_DE_VOTRE_DEPOT_GITHUB]
+    cd [NOM_DU_DOSSIER]
     ```
 
 2.  **Installez les dépendances :**
@@ -36,13 +43,27 @@ Pour faire fonctionner ce projet en local sur votre machine, suivez ces étapes 
     npm install
     ```
 
-3.  **Lancez le serveur de développement :**
+3.  **Configurez Supabase :**
+    - Créez un projet sur [Supabase](https://supabase.io/).
+    - Dans le dossier `src/`, créez un fichier `supabaseClient.js`.
+    - Ajoutez-y vos clés d'accès Supabase :
+      ```javascript
+      import { createClient } from '@supabase/supabase-js';
+
+      const supabaseUrl = 'VOTRE_URL_SUPABASE';
+      const supabaseAnonKey = 'VOTRE_CLE_ANON_SUPABASE';
+
+      export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      ```
+    - **Important :** N'oubliez pas d'exécuter les scripts SQL fournis pour créer les tables (`people`, `tags`, `person_tags`) et configurer les politiques de sécurité (Row-Level Security).
+
+4.  **Lancez le serveur de développement :**
     ```bash
     npm run dev
     ```
 
-4.  **Ouvrez l'application :**
-    Ouvrez votre navigateur et allez à l'adresse `http://localhost:5173` (ou l'adresse indiquée dans votre terminal).
+5.  **Ouvrez l'application :**
+    Rendez-vous à l'adresse indiquée dans votre terminal (généralement `http://localhost:5173`).
 
 ---
-_Développé avec ❤️ et l'aide d'un compagnon IA._ 
+_Développé pour optimiser la pertinence des interactions sur LinkedIn._ 

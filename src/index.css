@@ -93,7 +93,7 @@ small {
 }
 
 .button:hover, button:hover {
-    background-color: #005e8e;
+    background-color: var(--primary-hover-color);
 }
 
 .button.secondary {
@@ -339,4 +339,31 @@ textarea {
 
 .tag-creator-form .input-group input {
     flex-grow: 1;
+}
+
+/* Auth Page Styles */
+.auth-container {
+    max-width: 420px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-align: center;
+}
+
+.auth-container h1 {
+    margin-bottom: 2rem;
+}
+
+.auth-widget {
+    --colors-brand: var(--primary-color);
+    --colors-brandAccent: var(--primary-hover-color);
+    --colors-defaultButtonBackground: var(--background-color);
+    --colors-defaultButtonBackgroundHover: #eaeaea;
+    --fonts-bodyFontFamily: 'Poppins', sans-serif;
+    --fonts-buttonFontFamily: 'Poppins', sans-serif;
+    --fonts-inputFontFamily: 'Poppins', sans-serif;
+    --border-radius: 5px;
+    --inputs-border: 1px solid var(--border-color);
 } 

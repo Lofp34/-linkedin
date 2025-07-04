@@ -1,0 +1,22 @@
+# Architecture du Projet : LinkedIn @-Creator
+
+Cette application est une **Single Page Application (SPA)** construite avec React, connectée à un backend Supabase.
+
+## Flux de Données Principal
+
+Le flux de données est centralisé et unidirectionnel pour assurer la cohérence.
+
+1.  **Authentification :** L'utilisateur se connecte via le widget `Auth` de Supabase. La session est gérée par le client Supabase.
+2.  **Chargement des Données :** Une fois l'utilisateur connecté, le composant principal `[src/App.jsx](mdc:src/App.jsx)` appelle la fonction `fetchAllData`. Cette fonction récupère toutes les données (contacts, tags) appartenant à l'utilisateur depuis Supabase.
+3.  **Interaction Utilisateur :** Toute action de l'utilisateur qui modifie les données (ajout, suppression, modification, import) appelle une fonction `async` spécifique dans `[src/App.jsx](mdc:src/App.jsx)` (par exemple, `handleAddPerson`, `handleBulkAddTags`).
+4.  **Mise à Jour du Backend :** Ces fonctions envoient des requêtes à l'API de Supabase pour mettre à jour la base de données.
+5.  **Synchronisation de l'UI :** Après chaque modification réussie, la fonction `fetchAllData` est de nouveau appelée pour récupérer les données à jour depuis le serveur. Cela garantit que l'interface utilisateur reflète toujours l'état réel de la base de données.
+
+## Structure des Composants
+
+-   **`[src/App.jsx](mdc:src/App.jsx)` (Composant Racine) :** C'est le cœur de l'application. Il gère l'état global (liste des personnes, tags, sélections), contient toute la logique métier (fonctions de manipulation des données), et distribue l'état et les fonctions aux composants enfants via les `props`.
+-   **Composants de Présentation (`[src/components/](mdc:src/components/)`) :** Ces composants sont principalement "stupides". Ils reçoivent des données et des fonctions de `App.jsx` et sont responsables de l'affichage de l'interface et de la capture des événements utilisateur. Par exemple, `[src/components/PersonList.jsx](mdc:src/components/PersonList.jsx)` affiche la liste des contacts mais ne sait pas comment les supprimer lui-même ; il appelle la fonction `onDeletePerson` reçue en `props`.
+description:
+globs:
+alwaysApply: false
+---

@@ -1,0 +1,41 @@
+# Stack et Conventions Back-end (Supabase)
+
+Le back-end est entièrement géré par [Supabase](https://supabase.io/), qui fournit la base de données, l'authentification et les API.
+
+## 1. Configuration Client
+- Le client Supabase est initialisé dans `[src/supabaseClient.js](mdc:src/supabaseClient.js)`. Ce fichier contient l'URL du projet et la clé `anon` publique. Il doit être configuré correctement pour que l'application fonctionne.
+
+## 2. Base de Données (PostgreSQL)
+La structure de la base de données est relationnelle et conçue pour être simple et efficace.
+
+- **Table `people` :**
+    - `id` (uuid, pk)
+    - `firstname` (text)
+    - `lastname` (text)
+    - `user_id` (uuid, fk vers `auth.users.id`) : **Crucial pour la sécurité**, lie chaque contact à un utilisateur.
+
+- **Table `tags` :**
+    - `id` (uuid, pk)
+    - `name` (text, unique)
+    - `user_id` (uuid, fk vers `auth.users.id`) : Lie chaque tag à un utilisateur.
+
+- **Table `person_tags` (Table de Jonction) :**
+    - `person_id` (uuid, fk vers `people.id`)
+    - `tag_id` (uuid, fk vers `tags.id`)
+    - La paire (`person_id`, `tag_id`) forme la clé primaire, assurant qu'un tag ne peut être associé qu'une seule fois à une même personne.
+
+## 3. Authentification (Supabase Auth)
+- **Méthodes :** L'application utilise l'email/mot de passe et des fournisseurs OAuth (comme Google).
+- **Intégration :** Le widget `[Auth](https://supabase.com/docs/guides/auth/auth-helpers/auth-ui)` de `@supabase/auth-ui-react` gère les formulaires de connexion et d'inscription.
+- **Gestion de Session :** Le listener `onAuthStateChange` dans `[src/App.jsx](mdc:src/App.jsx)` met à jour l'état de la session en temps réel.
+
+## 4. Sécurité : Row-Level Security (RLS)
+C'est le pilier de la sécurité des données. **RLS est activé sur toutes les tables.**
+
+- **Principe :** Les politiques RLS garantissent qu'un utilisateur authentifié ne peut **voir et manipuler que ses propres données**.
+- **Implémentation :** Chaque politique vérifie que le `user_id` de la ligne correspond à l'UID de l'utilisateur actuellement authentifié (`auth.uid()`).
+- **Conséquence :** Sans ces politiques, n'importe quel utilisateur pourrait voir les contacts de tous les autres. Il est impératif de les mettre en place avant de passer en production.
+description:
+globs:
+alwaysApply: false
+---

@@ -1,0 +1,30 @@
+# Stack et Conventions Front-end
+
+## 1. Stack Technique
+- **Framework :** [React](https://react.dev/) (version 18+).
+- **Langage :** JavaScript (ES6+).
+- **Outil de Build :** [Vite](https://vitejs.dev/).
+- **Dépendances Clés :**
+    - `react`, `react-dom`
+    - `@supabase/supabase-js` : Le client JavaScript pour interagir avec l'API Supabase.
+    - `@supabase/auth-ui-react` : Fournit des composants React pré-construits pour l'authentification.
+- Le détail des dépendances se trouve dans `[package.json](mdc:package.json)`.
+
+## 2. Gestion de l'État (State Management)
+- **Approche :** La gestion de l'état est **centralisée** dans le composant `[src/App.jsx](mdc:src/App.jsx)`.
+- **Hooks :** L'état est géré exclusivement avec les Hooks React :
+    - `useState` pour les états simples (listes, booléens pour les modales, etc.).
+    - `useEffect` pour les effets de bord, notamment le chargement initial des données (`fetchAllData`) et la gestion de la session d'authentification.
+    - `useCallback` pour mémoriser les fonctions passées en `props` et éviter des re-renderings inutiles.
+    - `useMemo` pour mémoriser des valeurs calculées, comme la liste des personnes filtrées (`filteredPeople`).
+- Il n'y a **pas de bibliothèque de gestion d'état externe** (comme Redux ou Zustand) pour conserver la simplicité du projet.
+
+## 3. Conventions de Code
+- **Nom des Composants :** `PascalCase` (ex: `PersonList`).
+- **Nom des Fichiers :** `PascalCase` avec l'extension `.jsx` (ex: `PersonList.jsx`).
+- **Props :** Les fonctions passées en `props` pour gérer des événements sont préfixées par `on` ou `handle` (ex: `onDeletePerson`, `handleToggleTag`).
+- **Styling :** Le style global est dans `[src/index.css](mdc:src/index.css)`. Les composants ne possèdent pas de fichier CSS dédié ; ils utilisent des classes CSS globales.
+description:
+globs:
+alwaysApply: false
+---

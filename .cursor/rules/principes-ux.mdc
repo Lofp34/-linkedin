@@ -1,0 +1,25 @@
+# Principes de l'Expérience Utilisateur (UX)
+
+L'objectif est de fournir une application qui semble puissante, rapide et intuitive. Chaque interaction doit être fluide et prévisible.
+
+## 1. Clarté et Simplicité
+L'interface doit être épurée et les actions principales immédiatement compréhensibles. L'utilisateur ne doit jamais se demander "Que fait ce bouton ?".
+
+- **Exemple concret :** Le formulaire d'ajout de personne est simple, avec des champs clairs. Le composant `[src/components/AddPersonForm.jsx](mdc:src/components/AddPersonForm.jsx)` doit rester concis.
+
+## 2. Feedback Immédiat
+L'utilisateur doit toujours savoir ce qu'il se passe, surtout lors des opérations asynchrones.
+
+- **États de Chargement :** Un indicateur de chargement (`loading`) doit être visible pendant que l'application communique avec le backend (Supabase). C'est géré par l'état `loading` dans `[src/App.jsx](mdc:src/App.jsx)`.
+- **Confirmations :** Des messages de confirmation clairs (par exemple, via des `alert()`) doivent notifier l'utilisateur du succès d'une opération (ex: "Importation réussie !").
+- **Feedback Visuel :** Les éléments cliquables doivent réagir au survol (`:hover`) et au clic (`:active`), comme défini dans `[src/index.css](mdc:src/index.css)`.
+
+## 3. Efficacité de l'Utilisateur
+L'application doit faire gagner du temps à l'utilisateur, et non en perdre.
+
+- **Actions Groupées :** Les fonctionnalités comme la sélection multiple, l'ajout/suppression de tags en masse (`[src/components/BulkActionsBar.jsx](mdc:src/components/BulkActionsBar.jsx)`) sont cruciales pour l'efficacité.
+- **Import CSV :** La fonctionnalité d'import (`[src/components/ImportCSV.jsx](mdc:src/components/ImportCSV.jsx)`) est une porte d'entrée essentielle pour peupler rapidement l'application. Elle doit être robuste et bien expliquée.
+description:
+globs:
+alwaysApply: false
+---
