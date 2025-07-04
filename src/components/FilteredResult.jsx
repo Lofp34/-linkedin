@@ -1,59 +1,45 @@
 import React, { useState, useMemo } from 'react';
 import Tag from './Tag';
 
-const FilteredResult = ({ people, existingTags, selectedTags, onToggleTag }) => {
-  const [copySuccess, setCopySuccess] = useState('');
+const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy }) => {
+    const textToCopy = useMemo(() => {
+        return people.map(p => `@${p.firstname}${p.lastname}`).join(' ');
+    }, [people]);
 
-  const resultString = useMemo(() => {
-    return people.map(p => `@${p.firstname} ${p.lastname}`).join(' ');
-  }, [people]);
-
-  const handleCopy = () => {
-    if (!resultString) return;
-    navigator.clipboard.writeText(resultString).then(() => {
-        setCopySuccess('Copié !');
-        setTimeout(() => setCopySuccess(''), 2000);
-    }, () => {
-        setCopySuccess('Erreur');
-        setTimeout(() => setCopySuccess(''), 2000);
-    });
-  };
-
-  return (
-    <section>
-      <h2>Générer la liste (par filtres)</h2>
-      <div className="form-group">
-        <label>Cliquer sur un ou plusieurs tags pour filtrer :</label>
-        <div className="tags-container" style={{ marginTop: '10px' }}>
-          {existingTags.length > 0 ? (
-            existingTags.map(tag => (
-              <Tag
-                key={tag}
-                onClick={() => onToggleTag(tag)}
-                isActive={selectedTags.has(tag)}
-              >
-                {tag}
-              </Tag>
-            ))
-          ) : (
-            <small>Aucun tag n'a encore été créé.</small>
-          )}
-        </div>
-      </div>
-      <div className="form-group" id="result-group">
-        <label htmlFor="result">Résultat du filtre à copier ({people.length} personne(s))</label>
-        <textarea 
-          id="result" 
-          value={resultString} 
-          readOnly 
-          placeholder="Sélectionnez un ou plusieurs tags pour voir le résultat ici..."
-        />
-        <button id="copy-button" onClick={handleCopy} className={`button secondary ${copySuccess && 'success'}`}>
-          {copySuccess || 'Copier'}
-        </button>
-      </div>
-    </section>
-  );
+    return (
+        <section className="filtered-result-container">
+            <h2>Générer une liste de @</h2>
+            <div className="tags-filter-container">
+                <h3>Filtrer par tags</h3>
+                <div className="tags-list">
+                    {existingTags.map(tag => (
+                        <Tag 
+                            key={tag}
+                            onClick={() => onToggleTag(tag)}
+                            status={tagStates[tag] || 'neutral'}
+                        >
+                            {tag}
+                        </Tag>
+                    ))}
+                </div>
+            </div>
+            <div className="result-preview">
+                <h3>Résultat ({people.length} personne(s))</h3>
+                <div id="result-group">
+                    <label htmlFor="result-textarea">Résultat du filtre</label>
+                    <textarea 
+                        id="result-textarea" 
+                        rows="5" 
+                        value={textToCopy} 
+                        readOnly 
+                    />
+                    <button onClick={onCopy} className="button-copy">
+                        Copier
+                    </button>
+                </div>
+            </div>
+        </section>
+    );
 };
 
 export default FilteredResult; 

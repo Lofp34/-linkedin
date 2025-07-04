@@ -1,0 +1,42 @@
+.tag.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.tag.include {
+  background-color: #28a745; /* Vert */
+  color: white;
+  position: relative;
+  padding-left: 20px;
+}
+
+.tag.include::before {
+  content: '+';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: bold;
+}
+
+.tag.exclude {
+  background-color: #dc3545; /* Rouge */
+  color: white;
+  position: relative;
+  padding-left: 20px;
+}
+
+.tag.exclude::before {
+  content: '–'; /* Le bon caractère pour le moins */
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: bold;
+}
+
+/* --- Bulk Actions Bar --- */
+.bulk-actions-bar {
+  display: flex;
+  justify-content: space-between;
+} 

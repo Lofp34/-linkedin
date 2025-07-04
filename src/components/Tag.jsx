@@ -1,7 +1,7 @@
 import React from 'react';
 
-const Tag = ({ children, onClick, isActive }) => {
-  const className = `tag ${isActive ? 'active' : ''}`;
+const Tag = ({ children, onClick, status }) => {
+  const className = `tag ${status || ''}`;
   return (
     <span className={className} onClick={onClick}>
       {children}
