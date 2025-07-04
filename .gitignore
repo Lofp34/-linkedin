@@ -1,0 +1,24 @@
+# Dependencies
+/node_modules
+
+# Vite
+/dist
+/.vite/
+
+# IDE config
+.idea/
+.vscode/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System files
+.DS_Store 
