@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { supabase } from './supabaseClient'; 
 import AddPersonForm from './components/AddPersonForm';
 import PersonList from './components/PersonList';
 import FilteredResult from './components/FilteredResult';
@@ -12,8 +12,9 @@ import BulkEditTagsModal from './components/BulkEditTagsModal';
 import TagCreator from './components/TagCreator';
 
 function App() {
-  const [people, setPeople] = useLocalStorage('people', []);
-  const [allUniqueTags, setAllUniqueTags] = useLocalStorage('all_tags', []);
+  const [people, setPeople] = useState([]);
+  const [allUniqueTags, setAllUniqueTags] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTags, setSelectedTags] = useState(new Set());
   const [manualSelection, setManualSelection] = useState([]);
   const [editingPerson, setEditingPerson] = useState(null);
@@ -21,31 +22,130 @@ function App() {
   const [selectedPeople, setSelectedPeople] = useState(new Set());
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    const tagsFromPeople = new Set(people.flatMap(p => p.tags));
-    const combinedTags = new Set([...allUniqueTags, ...tagsFromPeople]);
-    const sortedCombined = [...combinedTags].sort();
-    
-    // Prevent infinite loops by checking if an update is necessary
-    if (sortedCombined.length !== allUniqueTags.length || !sortedCombined.every((t, i) => t === allUniqueTags[i])) {
-      setAllUniqueTags(sortedCombined);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [people]);
+  const fetchAllData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Fetch people with their tags
+      const { data: peopleData, error: peopleError } = await supabase
+        .from('people')
+        .select(`
+          id,
+          firstname,
+          lastname,
+          tags ( id, name )
+        `);
 
-  const addNewTagsToSystem = (tags) => {
-    if (!Array.isArray(tags)) return;
-    const currentTagsSet = new Set(allUniqueTags);
-    const newTagsToAdd = tags.filter(tag => tag.trim() && !currentTagsSet.has(tag.trim()));
-    
-    if (newTagsToAdd.length > 0) {
-      setAllUniqueTags(prevTags => [...prevTags, ...newTagsToAdd].sort());
+      if (peopleError) throw peopleError;
+
+      // Transform data to match the frontend structure
+      const transformedPeople = peopleData.map(p => ({
+        ...p,
+        tags: p.tags.map(t => t.name) 
+      }));
+      setPeople(transformedPeople);
+      
+      // Fetch all unique tags
+      const { data: tagsData, error: tagsError } = await supabase
+        .from('tags')
+        .select('name');
+
+      if (tagsError) throw tagsError;
+
+      setAllUniqueTags(tagsData.map(t => t.name).sort());
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  const handleAddPerson = async ({ firstname, lastname, tags: tagNames }) => {
+    try {
+      setLoading(true);
+
+      // 1. Insert the new person
+      const { data: personData, error: personError } = await supabase
+        .from('people')
+        .insert([{ firstname, lastname }])
+        .select('id')
+        .single();
+      
+      if (personError) throw personError;
+      const personId = personData.id;
+
+      // 2. Get IDs of the selected tags
+      if (tagNames && tagNames.length > 0) {
+        const { data: tagsData, error: tagsError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('name', tagNames);
+        
+        if (tagsError) throw tagsError;
+
+        // 3. Create the associations in the join table
+        const associations = tagsData.map(tag => ({
+          person_id: personId,
+          tag_id: tag.id
+        }));
+
+        const { error: assocError } = await supabase.from('person_tags').insert(associations);
+        if (assocError) throw assocError;
+      }
+      
+      // Refresh all data from the server
+      await fetchAllData();
+
+    } catch (error) {
+      console.error("Error adding person:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddPerson = (newPerson) => {
-    addNewTagsToSystem(newPerson.tags);
-    setPeople([...people, newPerson]);
+  const handleUpdatePerson = async (personData) => {
+    console.log("Updating person:", personData);
+    // TODO: Implement Supabase logic
+    await fetchAllData();
+  };
+
+  const handleDeletePerson = async (personId) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.from('people').delete().eq('id', personId);
+      if (error) throw error;
+      
+      // The person is deleted, now refresh the data
+      // We also clear the selection to avoid any dangling references
+      setSelectedPeople(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(personId);
+        return newSet;
+      });
+      await fetchAllData();
+
+    } catch(error) {
+      console.error("Error deleting person:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddNewTagToSystem = async (newTagName) => {
+    console.log("Adding tag:", newTagName);
+    const { data, error } = await supabase.from('tags').insert([{ name: newTagName.trim() }]).select();
+    if (error) {
+        if(error.code !== '23505') { // 23505 is unique_violation
+            console.error("Error adding tag:", error);
+        }
+    }
+    if (data) {
+        await fetchAllData();
+    }
   };
 
   const handleImport = (importedPeople) => {
@@ -71,23 +171,7 @@ function App() {
     alert(`Import terminé !\n- ${importedCount} personne(s) ajoutée(s)\n- ${duplicateCount} doublon(s) ignoré(s)`);
   };
 
-  const handleDeletePerson = (personId) => {
-    setPeople(people.filter(p => p.id !== personId));
-    setSelectedPeople(prev => {
-      const newSelected = new Set(prev);
-      newSelected.delete(personId);
-      return newSelected;
-    });
-  };
-
-  const handleUpdatePerson = (updatedPerson) => {
-    addNewTagsToSystem(updatedPerson.tags);
-    setPeople(people.map(p => p.id === updatedPerson.id ? updatedPerson : p));
-    setEditingPerson(null);
-  };
-
   const handleBulkAddTags = (tagsToAdd) => {
-    addNewTagsToSystem(tagsToAdd);
     setPeople(prevPeople =>
         prevPeople.map(person => {
             if (selectedPeople.has(person.id)) {
@@ -171,19 +255,16 @@ function App() {
     });
   };
 
-  const handleAddNewTagToSystem = (newTag) => {
-    const trimmedTag = newTag.trim();
-    if (trimmedTag && !allUniqueTags.includes(trimmedTag)) {
-        setAllUniqueTags(prevTags => [...prevTags, trimmedTag].sort());
-    }
-  };
-
   const filteredPeople = useMemo(() => {
     return people.filter(p => {
       if (selectedTags.size === 0) return true;
       return p.tags.some(tag => selectedTags.has(tag));
     });
   }, [people, selectedTags]);
+
+  if (loading) {
+    return <div className="container"><h1>Chargement des données...</h1></div>;
+  }
 
   return (
     <div className="container">
