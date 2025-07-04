@@ -1,9 +1,15 @@
 import React from 'react';
 import Tag from './Tag';
 
-const PersonItem = ({ person, onDeletePerson, onAddToSelection, onStartEdit }) => {
+const PersonItem = ({ person, onDeletePerson, onAddToSelection, onStartEdit, onToggleSelect, isSelected }) => {
   return (
-    <li>
+    <li className={isSelected ? 'selected' : ''}>
+      <input 
+        type="checkbox" 
+        className="person-item-checkbox"
+        checked={isSelected}
+        onChange={() => onToggleSelect(person.id)}
+      />
       <div className="person-info">
         <strong>@{person.firstname} {person.lastname}</strong>
         <div className="tags-container">

@@ -1,7 +1,7 @@
 import React from 'react';
 import PersonItem from './PersonItem';
 
-const PersonList = ({ people, onDeletePerson, onAddToSelection, onStartEdit }) => {
+const PersonList = ({ people, onDeletePerson, onAddToSelection, onStartEdit, selectedIds, onToggleSelect }) => {
   return (
     <section>
       <h2>Personnes enregistrées ({people.length})</h2>
@@ -16,6 +16,8 @@ const PersonList = ({ people, onDeletePerson, onAddToSelection, onStartEdit }) =
               onDeletePerson={onDeletePerson}
               onAddToSelection={onAddToSelection}
               onStartEdit={onStartEdit}
+              isSelected={selectedIds.includes(person.id)}
+              onToggleSelect={onToggleSelect}
             />
           ))}
         </ul>

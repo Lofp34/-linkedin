@@ -1,32 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import Tag from './Tag';
 
-const FilteredResult = ({ people, existingTags }) => {
-  const [selectedFilterTags, setSelectedFilterTags] = useState([]);
+const FilteredResult = ({ people, existingTags, selectedTags, onToggleTag }) => {
   const [copySuccess, setCopySuccess] = useState('');
 
-  const handleTagClick = (tag) => {
-    setSelectedFilterTags(prevTags => {
-      if (prevTags.includes(tag)) {
-        return prevTags.filter(t => t !== tag); // Remove tag
-      } else {
-        return [...prevTags, tag]; // Add tag
-      }
-    });
-  };
-
-  const filteredPeople = useMemo(() => {
-    if (selectedFilterTags.length === 0) {
-      return people;
-    }
-    return people.filter(person => 
-      person.tags.some(personTag => selectedFilterTags.includes(personTag.toLowerCase()))
-    );
-  }, [people, selectedFilterTags]);
-
   const resultString = useMemo(() => {
-    return filteredPeople.map(p => `@${p.firstname} ${p.lastname}`).join(' ');
-  }, [filteredPeople]);
+    return people.map(p => `@${p.firstname} ${p.lastname}`).join(' ');
+  }, [people]);
 
   const handleCopy = () => {
     if (!resultString) return;
@@ -49,8 +29,8 @@ const FilteredResult = ({ people, existingTags }) => {
             existingTags.map(tag => (
               <Tag
                 key={tag}
-                onClick={() => handleTagClick(tag)}
-                className={selectedFilterTags.includes(tag) ? 'active' : ''}
+                onClick={() => onToggleTag(tag)}
+                isActive={selectedTags.has(tag)}
               >
                 {tag}
               </Tag>
@@ -61,8 +41,13 @@ const FilteredResult = ({ people, existingTags }) => {
         </div>
       </div>
       <div className="form-group" id="result-group">
-        <label htmlFor="result">Résultat du filtre à copier ({filteredPeople.length} personne(s))</label>
-        <textarea id="result" value={resultString} readOnly />
+        <label htmlFor="result">Résultat du filtre à copier ({people.length} personne(s))</label>
+        <textarea 
+          id="result" 
+          value={resultString} 
+          readOnly 
+          placeholder="Sélectionnez un ou plusieurs tags pour voir le résultat ici..."
+        />
         <button id="copy-button" onClick={handleCopy} className={`button secondary ${copySuccess && 'success'}`}>
           {copySuccess || 'Copier'}
         </button>

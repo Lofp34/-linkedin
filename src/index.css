@@ -194,6 +194,31 @@ textarea {
     color: white;
 }
 
+.title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.title-container h1 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.settings-icon {
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.settings-icon:hover {
+    background-color: var(--secondary-color);
+}
+
 .person-list-actions {
     display: flex;
     gap: 10px;
@@ -241,4 +266,77 @@ textarea {
     font-weight: bold;
     color: #aaa;
     cursor: pointer;
+}
+
+.person-item-checkbox {
+    margin-right: 15px;
+    transform: scale(1.2);
+}
+
+#person-list li.selected {
+    background-color: #dbeafc; /* A light blue for selection */
+    box-shadow: 0 0 0 2px var(--primary-color) inset;
+}
+
+.bulk-actions-bar {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bulk-actions-bar span {
+    font-weight: bold;
+}
+
+.bulk-actions-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-actions-buttons button {
+    margin-left: 10px;
+    background-color: transparent;
+    border: 1px solid white;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.bulk-actions-buttons button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.bulk-actions-buttons button.delete {
+    border-color: #ff8a80;
+    color: #ff8a80;
+}
+
+.bulk-actions-buttons button.delete:hover {
+    background-color: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.tag-creator-section {
+    background-color: #f8f9fa;
+    padding: 1.5em;
+    border-radius: 8px;
+    margin-bottom: 2em;
+    border: 1px solid var(--border-color);
+}
+
+.tag-creator-form .input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.tag-creator-form .input-group input {
+    flex-grow: 1;
 } 

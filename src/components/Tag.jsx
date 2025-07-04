@@ -1,8 +1,9 @@
 import React from 'react';
 
-const Tag = ({ children, onClick, className = '' }) => {
+const Tag = ({ children, onClick, isActive }) => {
+  const className = `tag ${isActive ? 'active' : ''}`;
   return (
-    <span className={`tag ${className}`} onClick={onClick}>
+    <span className={className} onClick={onClick}>
       {children}
     </span>
   );
