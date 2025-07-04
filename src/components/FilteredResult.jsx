@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import Tag from './Tag';
 
-const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy }) => {
+const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy, onReset }) => {
     const textToCopy = useMemo(() => {
         return people.map(p => `@${p.firstname}${p.lastname}`).join(' ');
     }, [people]);
@@ -16,7 +16,7 @@ const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy }
                         <Tag 
                             key={tag}
                             onClick={() => onToggleTag(tag)}
-                            status={tagStates[tag] || 'neutral'}
+                            status={tagStates[tag]}
                         >
                             {tag}
                         </Tag>
@@ -35,6 +35,9 @@ const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy }
                     />
                     <button onClick={onCopy} className="button-copy">
                         Copier
+                    </button>
+                    <button onClick={onReset} className="button-reset button secondary">
+                        Réinitialiser
                     </button>
                 </div>
             </div>

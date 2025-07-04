@@ -101,6 +101,10 @@ const GenerationPage = () => {
         });
     };
 
+    const handleResetFilters = () => {
+        setTagStates({});
+    };
+
     const handleSelectPerson = (personId) => {
         setSelectedPeople((prevSelected) => {
             const newSelected = new Set(prevSelected);
@@ -235,6 +239,7 @@ const GenerationPage = () => {
                 tagStates={tagStates}
                 onToggleTag={handleToggleFilterTag}
                 onCopy={handleCopyToClipboard}
+                onReset={handleResetFilters}
             />
             
             <section>
