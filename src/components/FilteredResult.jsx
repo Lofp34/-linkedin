@@ -4,10 +4,10 @@ const FilteredResult = ({
     people, 
     textToCopy,
     onCopy,
+    extraButton
 }) => {
     return (
         <div className="result-preview">
-            <h3>Résultat ({people.length} personne(s))</h3>
             <div id="result-group">
                 <label htmlFor="result-textarea">Résultat du filtre</label>
                 <textarea 
@@ -16,9 +16,12 @@ const FilteredResult = ({
                     value={textToCopy} 
                     readOnly 
                 />
-                <button onClick={onCopy} className="button-copy">
-                    Copier
-                </button>
+                <div className="result-actions">
+                    <button onClick={onCopy} className="button-copy">
+                        Copier
+                    </button>
+                    {extraButton}
+                </div>
             </div>
         </div>
     );

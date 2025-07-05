@@ -243,110 +243,125 @@ const GenerationPage = () => {
 
     return (
         <div className="generation-page">
-            {/* Résultats en premier */}
-            <div className="results-section">
+            {/* Header avec résultats et infos */}
+            <div className="results-header">
                 <h3>Résultats ({filteredPeople.length})</h3>
-                
-                {loading && <div>Chargement des résultats...</div>}
-                
-                {!loading && filteredPeople.length === 0 && (
-                    <div>Aucun résultat trouvé avec ces filtres.</div>
-                )}
-                
-                {!loading && filteredPeople.length > 0 && (
-                    <>
-                        <FilteredResult
-                            people={filteredPeople}
-                            textToCopy={textToCopy}
-                            onCopy={handleCopyToClipboard}
-                        />
-                        
-                        {selectedPeople.size > 0 && (
-                            <BulkActionsBar
-                                selectedCount={selectedPeople.size}
-                                onSelectAll={handleSelectAll}
-                                onDeselectAll={handleDeselectAll}
-                                onBulkEdit={() => setIsBulkEditModalOpen(true)}
-                                onBulkDelete={handleDeleteSelected}
-                            />
-                        )}
-                        
-                        <PersonList
-                            people={filteredPeople}
-                            onSelect={handleSelectPerson}
-                            selectedPeople={selectedPeople}
-                            showActions={false}
-                        />
-                    </>
-                )}
-            </div>
-            
-            {/* Filtres en second */}
-            <div className="filters-section">
-                <h3>Filtres</h3>
-                
-                <div className="filter-group">
-                    <h4>Tags (cliquez pour filtrer)</h4>
-                    <div className="tag-categories-container">
-                        {TAG_CATEGORIES.map(category => {
-                            const categoryTags = tagsByCategory[category] || [];
-                            
-                            if (categoryTags.length === 0) return null;
-                            
-                            return (
-                                <CollapsibleTagSection
-                                    key={category}
-                                    title={category}
-                                    itemCount={categoryTags.length}
-                                    isAccordionMode={true}
-                                    isOpen={openCategory === category}
-                                    onToggle={handleCategoryToggle}
-                                >
-                                    <div className="tag-filter-container">
-                                        {categoryTags.map(tag => (
-                                            <button
-                                                key={tag}
-                                                className={`tag-filter ${tagStates[tag] || 'neutral'}`}
-                                                onClick={() => handleToggleFilterTag(tag)}
-                                            >
-                                                {tag}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </CollapsibleTagSection>
-                            );
-                        })}
+                <div className="results-info">
+                    <div className="info-item">
+                        <span className="info-label">Nb max de sollicitations:</span>
+                        <span className="info-value">{maxSolicitations || 'Pas de limite'}</span>
+                    </div>
+                    <div className="info-item">
+                        <span className="info-label">Dernière sollicitation avant:</span>
+                        <span className="info-value">{solicitedBefore ? new Date(solicitedBefore).toLocaleDateString() : 'Pas de limite'}</span>
                     </div>
                 </div>
-
-                <div className="filter-group">
-                    <label>
-                        Nb max de sollicitations:
-                        <input
-                            type="number"
-                            value={maxSolicitations}
-                            onChange={(e) => setMaxSolicitations(e.target.value)}
-                            min="0"
-                            placeholder="Pas de limite"
-                        />
-                    </label>
-                </div>
-
-                <div className="filter-group">
-                    <label>
-                        Dernière sollicitation avant:
-                        <input
-                            type="date"
-                            value={solicitedBefore ? solicitedBefore.split('T')[0] : ''}
-                            onChange={(e) => handleDateChange(e.target.value ? new Date(e.target.value) : null)}
-                        />
-                    </label>
-                </div>
-
-                <button onClick={handleResetFilters} className="button secondary">
-                    Réinitialiser les filtres
-                </button>
             </div>
+
+            {/* Résultats du filtre avec boutons */}
+            {loading && <div>Chargement des résultats...</div>}
+            
+            {!loading && filteredPeople.length === 0 && (
+                <div>Aucun résultat trouvé avec ces filtres.</div>
+            )}
+            
+            {!loading && filteredPeople.length > 0 && (
+                <FilteredResult
+                    people={filteredPeople}
+                    textToCopy={textToCopy}
+                    onCopy={handleCopyToClipboard}
+                    extraButton={
+                        <button onClick={handleResetFilters} className="button secondary">
+                            Réinitialiser les filtres
+                        </button>
+                    }
+                />
+            )}
+
+            {/* Filtres */}
+            <div className="filters-section">
+                <h4>Tags (cliquez pour filtrer)</h4>
+                <div className="tag-categories-container">
+                    {TAG_CATEGORIES.map(category => {
+                        const categoryTags = tagsByCategory[category] || [];
+                        
+                        if (categoryTags.length === 0) return null;
+                        
+                        return (
+                            <CollapsibleTagSection
+                                key={category}
+                                title={category}
+                                itemCount={categoryTags.length}
+                                isAccordionMode={true}
+                                isOpen={openCategory === category}
+                                onToggle={handleCategoryToggle}
+                            >
+                                <div className="tag-filter-container">
+                                    {categoryTags.map(tag => (
+                                        <button
+                                            key={tag}
+                                            className={`tag-filter ${tagStates[tag] || 'neutral'}`}
+                                            onClick={() => handleToggleFilterTag(tag)}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                            </CollapsibleTagSection>
+                        );
+                    })}
+                </div>
+
+                <div className="other-filters">
+                    <div className="filter-group">
+                        <label>
+                            Nb max de sollicitations:
+                            <input
+                                type="number"
+                                value={maxSolicitations}
+                                onChange={(e) => setMaxSolicitations(e.target.value)}
+                                min="0"
+                                placeholder="Pas de limite"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="filter-group">
+                        <label>
+                            Dernière sollicitation avant:
+                            <input
+                                type="date"
+                                value={solicitedBefore ? solicitedBefore.split('T')[0] : ''}
+                                onChange={(e) => handleDateChange(e.target.value ? new Date(e.target.value) : null)}
+                            />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            {/* Liste des personnes tout en bas */}
+            {!loading && filteredPeople.length > 0 && (
+                <div className="people-list-section">
+                    <h4>Personnes enregistrées</h4>
+                    
+                    {selectedPeople.size > 0 && (
+                        <BulkActionsBar
+                            selectedCount={selectedPeople.size}
+                            onSelectAll={handleSelectAll}
+                            onDeselectAll={handleDeselectAll}
+                            onBulkEdit={() => setIsBulkEditModalOpen(true)}
+                            onBulkDelete={handleDeleteSelected}
+                        />
+                    )}
+                    
+                    <PersonList
+                        people={filteredPeople}
+                        onSelect={handleSelectPerson}
+                        selectedPeople={selectedPeople}
+                        showActions={false}
+                    />
+                </div>
+            )}
 
             {/* Modals */}
             <BulkEditTagsModal
