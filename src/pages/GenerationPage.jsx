@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import useDebounce from '../hooks/useDebounce';
+import { useSessionStorage } from '../hooks/useSessionStorage';
 
 // Components for this page
 import FilteredResult from '../components/FilteredResult';
@@ -9,15 +11,31 @@ import BulkEditTagsModal from '../components/BulkEditTagsModal';
 
 const GenerationPage = () => {
     // Data states
-    const [people, setPeople] = useState([]);
+    const [filteredPeople, setFilteredPeople] = useState([]);
     const [allUniqueTags, setAllUniqueTags] = useState([]);
     const [loading, setLoading] = useState(true);
     const [session, setSession] = useState(null);
 
-    // Interaction states
-    const [tagStates, setTagStates] = useState({}); // neutral, 'include', 'exclude'
+    // Filter states are now persisted in sessionStorage
+    const [tagStates, setTagStates] = useSessionStorage('generation_tagStates', {});
+    const [maxSolicitations, setMaxSolicitations] = useSessionStorage('generation_maxSolicitations', '');
+    const [solicitedBefore, setSolicitedBefore] = useSessionStorage('generation_solicitedBefore', null);
+
+    // Debounced values
+    const debouncedMaxSolicitations = useDebounce(maxSolicitations, 500);
+    const debouncedSolicitedBefore = useDebounce(solicitedBefore, 500);
+
+    // Selection states
     const [selectedPeople, setSelectedPeople] = useState(new Set());
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    // This is now the single source of truth for the text to be copied
+    const textToCopy = useMemo(() => {
+        return filteredPeople
+            .map(p => `@${p.firstname} ${p.lastname}`) // Corrected format with space
+            .join(' ');
+    }, [filteredPeople]);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -29,58 +47,85 @@ const GenerationPage = () => {
         return () => subscription.unsubscribe();
     }, []);
 
-    const fetchAllData = useCallback(async () => {
-        if (!session) return;
-        setLoading(true);
-        try {
-            // We now fetch solicitation data as well
-            const { data: peopleData, error: peopleError } = await supabase
-                .from('people')
-                .select(`id, firstname, lastname, solicitation_count, last_solicitation_date, tags ( id, name )`)
-                .order('created_at', { ascending: false });
-
-            if (peopleError) throw peopleError;
-            const transformedPeople = peopleData.map(p => ({
-                ...p,
-                tags: p.tags.map(t => t.name)
-            }));
-            setPeople(transformedPeople);
-
-            const { data: tagsData, error: tagsError } = await supabase.from('tags').select('name');
-            if (tagsError) throw tagsError;
-            setAllUniqueTags(tagsData.map(t => t.name).sort());
-
-        } catch (error) {
-            console.error("Error fetching data:", error);
-        } finally {
-            setLoading(false);
+    // Initial data fetch (all tags for the filter UI)
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            if (!session) return;
+            setLoading(true);
+            try {
+                const { data: tagsData, error: tagsError } = await supabase.from('tags').select('name');
+                if (tagsError) throw tagsError;
+                setAllUniqueTags(tagsData.map(t => t.name).sort());
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (session) {
+            fetchInitialData();
         }
     }, [session]);
 
+    // Dynamic filtering effect
     useEffect(() => {
-        if (session) {
-            fetchAllData();
-        } else {
-            setLoading(false);
-        }
-    }, [session, fetchAllData]);
-
-    const filteredPeople = useMemo(() => {
-        const includedTags = Object.keys(tagStates).filter(tag => tagStates[tag] === 'include');
-        const excludedTags = Object.keys(tagStates).filter(tag => tagStates[tag] === 'exclude');
-
-        // If no tags are included, the generation list is empty.
-        if (includedTags.length === 0) {
-            return [];
-        }
-
-        return people.filter(person => {
-            const hasIncludedTag = includedTags.some(tag => person.tags.includes(tag));
-            const hasExcludedTag = excludedTags.some(tag => person.tags.includes(tag));
+        const fetchFilteredData = async () => {
+            if (!session) return;
             
-            return hasIncludedTag && !hasExcludedTag;
-        });
-    }, [people, tagStates]);
+            const includedTags = Object.keys(tagStates).filter(tag => tagStates[tag] === 'include');
+            if (includedTags.length === 0) {
+                setFilteredPeople([]);
+                return;
+            }
+
+            setLoading(true);
+            const excludedTags = Object.keys(tagStates).filter(tag => tagStates[tag] === 'exclude');
+            let excludedPersonIds = [];
+
+            // Step 1: Get IDs of people who have excluded tags
+            if (excludedTags.length > 0) {
+                const { data: excludedData, error: excludedError } = await supabase
+                    .from('person_tags')
+                    .select('person_id')
+                    .in('tag_id', (await supabase.from('tags').select('id').in('name', excludedTags)).data.map(t => t.id));
+                
+                if (excludedData) {
+                    excludedPersonIds = excludedData.map(item => item.person_id);
+                }
+            }
+
+            // Step 2: Build the main query
+            let query = supabase
+                .from('people')
+                .select(`id, firstname, lastname, solicitation_count, last_solicitation_date, tags!inner(name)`)
+                .in('tags.name', includedTags);
+
+            if (excludedPersonIds.length > 0) {
+                query = query.not('id', 'in', `(${excludedPersonIds.join(',')})`);
+            }
+            if (debouncedMaxSolicitations) {
+                query = query.lte('solicitation_count', parseInt(debouncedMaxSolicitations, 10));
+            }
+            if (debouncedSolicitedBefore) {
+                // The value is already a string, we just need to format it for the query
+                const formattedDate = debouncedSolicitedBefore.split('T')[0];
+                query = query.or(`last_solicitation_date.is.null,last_solicitation_date.lte.${formattedDate}`);
+            }
+
+            try {
+                const { data, error } = await query;
+                if (error) throw error;
+                const transformed = data.map(p => ({ ...p, tags: p.tags.map(t => t.name) }));
+                setFilteredPeople(transformed);
+            } catch (error) {
+                console.error("Error fetching filtered data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFilteredData();
+    }, [session, tagStates, debouncedMaxSolicitations, debouncedSolicitedBefore, refreshTrigger]);
 
     const handleToggleFilterTag = (tag) => {
         setTagStates(prevStates => {
@@ -103,6 +148,8 @@ const GenerationPage = () => {
 
     const handleResetFilters = () => {
         setTagStates({});
+        setMaxSolicitations('');
+        setSolicitedBefore(null);
     };
 
     const handleSelectPerson = (personId) => {
@@ -135,7 +182,7 @@ const GenerationPage = () => {
             if (error) throw error;
             
             setSelectedPeople(new Set()); // Clear selection
-            await fetchAllData(); // Refresh data
+            setRefreshTrigger(t => t + 1); // Trigger a refresh
         } catch (error) {
             console.error("Error deleting selected people:", error);
         } finally {
@@ -156,7 +203,7 @@ const GenerationPage = () => {
             if (associations.length > 0) {
                 await supabase.from('person_tags').upsert(associations, { onConflict: 'person_id, tag_id' });
             }
-            await fetchAllData();
+            setRefreshTrigger(t => t + 1); // Trigger a refresh
         } catch (error) {
             console.error("Error bulk adding tags:", error);
         } finally {
@@ -176,7 +223,7 @@ const GenerationPage = () => {
             if (tagIdsToRemove.length > 0 && selectedPeople.size > 0) {
                 await supabase.from('person_tags').delete().in('person_id', Array.from(selectedPeople)).in('tag_id', tagIdsToRemove);
             }
-            await fetchAllData();
+            setRefreshTrigger(t => t + 1); // Trigger a refresh
         } catch (error) {
             console.error("Error bulk removing tags:", error);
         } finally {
@@ -192,39 +239,28 @@ const GenerationPage = () => {
             console.error("Error adding tag:", error);
         }
         if (data) {
-            await fetchAllData();
+            setRefreshTrigger(t => t + 1); // Trigger a refresh
         }
     };
 
     const handleCopyToClipboard = async () => {
-        const textToCopy = filteredPeople
-            .map(p => `@${p.firstname}${p.lastname}`)
-            .join(' ');
-        
         if (!textToCopy) {
             alert("Aucune personne à copier.");
             return;
         }
-
         try {
             await navigator.clipboard.writeText(textToCopy);
             alert('Liste copiée dans le presse-papiers !');
-
-            // Now, let's update the solicitation count in the database
-            const personIdsToUpdate = filteredPeople.map(p => p.id);
-            if (personIdsToUpdate.length > 0) {
-                const { error } = await supabase.rpc('increment_solicitation', { person_ids: personIdsToUpdate });
-                if (error) {
-                    console.error("Error updating solicitation count:", error);
-                } else {
-                    // Refresh data to show updated counts
-                    await fetchAllData();
-                }
-            }
+            setRefreshTrigger(t => t + 1);
         } catch (err) {
             console.error('Failed to copy text: ', err);
             alert('Erreur lors de la copie.');
         }
+    };
+
+    // This function receives a Date object from the picker and stores its string representation
+    const handleDateChange = (date) => {
+        setSolicitedBefore(date ? date.toISOString() : null);
     };
 
     if (loading) {
@@ -240,6 +276,11 @@ const GenerationPage = () => {
                 onToggleTag={handleToggleFilterTag}
                 onCopy={handleCopyToClipboard}
                 onReset={handleResetFilters}
+                maxSolicitations={maxSolicitations}
+                onMaxSolicitationsChange={setMaxSolicitations}
+                solicitedBefore={solicitedBefore ? new Date(solicitedBefore) : null}
+                onSolicitedBeforeChange={handleDateChange}
+                textToCopy={textToCopy}
             />
             
             <section>

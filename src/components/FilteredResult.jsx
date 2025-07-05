@@ -1,11 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import Tag from './Tag';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
-const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy, onReset }) => {
-    const textToCopy = useMemo(() => {
-        return people.map(p => `@${p.firstname}${p.lastname}`).join(' ');
-    }, [people]);
-
+const FilteredResult = ({ 
+    people, 
+    existingTags, 
+    tagStates, 
+    onToggleTag, 
+    onCopy, 
+    onReset,
+    maxSolicitations,
+    onMaxSolicitationsChange,
+    solicitedBefore,
+    onSolicitedBeforeChange,
+    textToCopy
+}) => {
     return (
         <section className="filtered-result-container">
             <h2>Générer une liste de @</h2>
@@ -23,6 +33,35 @@ const FilteredResult = ({ people, existingTags, tagStates, onToggleTag, onCopy, 
                     ))}
                 </div>
             </div>
+
+            <div className="activity-filter-container">
+                <h3>Filtrer par activité</h3>
+                <div className="filter-controls">
+                    <div className="form-group">
+                        <label htmlFor="max-solicitations">Sollicitations max.</label>
+                        <input 
+                            type="number"
+                            id="max-solicitations"
+                            value={maxSolicitations}
+                            onChange={(e) => onMaxSolicitationsChange(e.target.value)}
+                            placeholder="Ex: 3"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="solicited-before">Non sollicité depuis le</label>
+                        <DatePicker 
+                            id="solicited-before"
+                            selected={solicitedBefore}
+                            onChange={(date) => onSolicitedBeforeChange(date)}
+                            dateFormat="dd/MM/yyyy"
+                            isClearable
+                            placeholderText="Cliquez pour choisir"
+                            className="date-picker-input"
+                        />
+                    </div>
+                </div>
+            </div>
+
             <div className="result-preview">
                 <h3>Résultat ({people.length} personne(s))</h3>
                 <div id="result-group">
