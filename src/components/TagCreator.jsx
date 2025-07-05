@@ -5,9 +5,14 @@ const TagCreator = ({ onAddNewTag }) => {
 
   const handleCreateTag = (e) => {
     e.preventDefault();
-    const trimmedTag = newTag.trim();
-    if (trimmedTag) {
-      onAddNewTag(trimmedTag);
+    const tagNames = newTag.split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag !== '');
+
+    if (tagNames.length > 0) {
+      tagNames.forEach(tagName => {
+        onAddNewTag(tagName);
+      });
       setNewTag('');
     }
   };
@@ -24,9 +29,9 @@ const TagCreator = ({ onAddNewTag }) => {
               id="global-new-tag"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
-              placeholder="Entrez un nouveau tag..."
+              placeholder="Nouveaux tags (séparés par une virgule)..."
             />
-            <button type="submit" className="button">Créer le tag</button>
+            <button type="submit" className="button">Créer</button>
           </div>
           <small>Les tags créés ici seront disponibles pour toutes les personnes.</small>
         </div>
