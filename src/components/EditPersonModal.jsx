@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import Tag from './Tag';
 import { TAG_CATEGORIES } from '../contexts/ContactsContext';
+import CollapsibleTagSection from './CollapsibleTagSection';
 
 const EditPersonModal = ({ 
   person, 
@@ -213,8 +214,12 @@ const EditPersonModal = ({
                     const categoryTags = tagsByCategory[category] || [];
                     
                     return (
-                      <div key={category} className="category-section">
-                        <h4 className="category-title">{category} ({categoryTags.length})</h4>
+                      <CollapsibleTagSection
+                        key={category}
+                        title={category}
+                        itemCount={categoryTags.length}
+                        isOpenByDefault={false}
+                      >
                         <Droppable droppableId={category}>
                           {(provided, snapshot) => (
                             <div
@@ -253,7 +258,7 @@ const EditPersonModal = ({
                             </div>
                           )}
                         </Droppable>
-                      </div>
+                      </CollapsibleTagSection>
                     );
                   })}
                 </div>
@@ -308,23 +313,7 @@ const EditPersonModal = ({
           background-color: #fafafa;
         }
         
-        .category-section {
-          margin-bottom: 1.5rem;
-          background-color: white;
-          border-radius: 6px;
-          border-left: 3px solid var(--primary-color);
-          overflow: hidden;
-        }
-        
-        .category-title {
-          margin: 0;
-          padding: 8px 12px;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--primary-color);
-          background-color: #f8f9fa;
-          border-bottom: 1px solid #e9ecef;
-        }
+
         
         .tags-drop-zone {
           min-height: 50px;

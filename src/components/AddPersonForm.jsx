@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Tag from './Tag';
 import { TAG_CATEGORIES } from '../contexts/ContactsContext';
+import CollapsibleTagSection from './CollapsibleTagSection';
 
 const AddPersonForm = ({ 
   onAddPerson, // Ancienne API
@@ -146,8 +147,12 @@ const AddPersonForm = ({
               if (availableCategoryTags.length === 0) return null;
               
               return (
-                <div key={category} className="category-section">
-                  <h4 className="category-title">{category}</h4>
+                <CollapsibleTagSection
+                  key={category}
+                  title={category}
+                  itemCount={availableCategoryTags.length}
+                  isOpenByDefault={false}
+                >
                   <div className="tags-container">
                     {availableCategoryTags.map(tag => (
                       <Tag key={tag.name} isActive={false} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>
@@ -155,7 +160,7 @@ const AddPersonForm = ({
                       </Tag>
                     ))}
                   </div>
-                </div>
+                </CollapsibleTagSection>
               );
             })}
           </div>

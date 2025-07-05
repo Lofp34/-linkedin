@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { useContacts } from '../contexts/ContactsContext';
+import { useContacts, TAG_CATEGORIES } from '../contexts/ContactsContext';
 import useDebounce from '../hooks/useDebounce';
 import { useSessionStorage } from '../hooks/useSessionStorage';
 
@@ -9,6 +9,7 @@ import FilteredResult from '../components/FilteredResult';
 import PersonList from '../components/PersonList';
 import BulkActionsBar from '../components/BulkActionsBar';
 import BulkEditTagsModal from '../components/BulkEditTagsModal';
+import CollapsibleTagSection from '../components/CollapsibleTagSection';
 
 const GenerationPage = () => {
     // Utiliser le contexte pour les opérations de base
@@ -50,6 +51,20 @@ const GenerationPage = () => {
     // Noms des tags pour les filtres (seulement les noms)
     const tagNames = useMemo(() => {
         return allUniqueTags.map(tag => tag.name).sort();
+    }, [allUniqueTags]);
+
+    // Organiser les tags par catégorie pour les filtres
+    const tagsByCategory = useMemo(() => {
+        const grouped = {};
+        
+        TAG_CATEGORIES.forEach(category => {
+            grouped[category] = allUniqueTags
+                .filter(tag => (tag.category === category || (!tag.category && category === 'Non classée')))
+                .map(tag => tag.name)
+                .sort();
+        });
+        
+        return grouped;
     }, [allUniqueTags]);
 
     // Dynamic filtering effect
@@ -231,16 +246,33 @@ const GenerationPage = () => {
                 
                 <div className="filter-group">
                     <h4>Tags (cliquez pour filtrer)</h4>
-                    <div className="tag-filter-container">
-                        {tagNames.map(tag => (
-                            <button
-                                key={tag}
-                                className={`tag-filter ${tagStates[tag] || 'neutral'}`}
-                                onClick={() => handleToggleFilterTag(tag)}
-                            >
-                                {tag}
-                            </button>
-                        ))}
+                    <div className="tag-categories-container">
+                        {TAG_CATEGORIES.map(category => {
+                            const categoryTags = tagsByCategory[category] || [];
+                            
+                            if (categoryTags.length === 0) return null;
+                            
+                            return (
+                                <CollapsibleTagSection
+                                    key={category}
+                                    title={category}
+                                    itemCount={categoryTags.length}
+                                    isOpenByDefault={false}
+                                >
+                                    <div className="tag-filter-container">
+                                        {categoryTags.map(tag => (
+                                            <button
+                                                key={tag}
+                                                className={`tag-filter ${tagStates[tag] || 'neutral'}`}
+                                                onClick={() => handleToggleFilterTag(tag)}
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </CollapsibleTagSection>
+                            );
+                        })}
                     </div>
                 </div>
 
