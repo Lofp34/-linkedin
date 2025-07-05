@@ -384,6 +384,39 @@ export const ContactsProvider = ({ children }) => {
     }
   }, [session]);
 
+  // Modifier le nom d'un tag
+  const updateTagName = useCallback(async (oldTagName, newTagName) => {
+    if (!session) return;
+    
+    // Vérifier que le nouveau nom n'existe pas déjà
+    const existingTag = allUniqueTags.find(tag => tag.name.toLowerCase() === newTagName.toLowerCase());
+    if (existingTag && existingTag.name !== oldTagName) {
+      throw new Error(`Un tag avec le nom "${newTagName}" existe déjà.`);
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tags')
+        .update({ name: newTagName })
+        .eq('name', oldTagName);
+      
+      if (error) throw error;
+
+      // Mise à jour optimiste
+      setAllUniqueTags(prevTags =>
+        prevTags.map(tag =>
+          tag.name === oldTagName ? { ...tag, name: newTagName } : tag
+        )
+      );
+
+      // Rafraîchir aussi les données des personnes pour mettre à jour les tags
+      await fetchAllPeople();
+    } catch (error) {
+      console.error("Error updating tag name:", error);
+      throw error;
+    }
+  }, [session, allUniqueTags, fetchAllPeople]);
+
   // === OPÉRATIONS EN MASSE ===
 
   // Ajouter des tags à plusieurs contacts
@@ -511,6 +544,7 @@ export const ContactsProvider = ({ children }) => {
     deleteTagFromSystem,
     toggleTagPriority,
     updateTagCategory,
+    updateTagName,
     
     // Opérations en masse
     bulkAddTags,
