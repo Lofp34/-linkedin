@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
+import { TAG_CATEGORIES } from '../contexts/ContactsContext';
 
 const TagCreator = ({ 
-  onAddNewTag, // Ancienne API
-  onAddTag,    // Nouvelle API
-  existingTags // Pour éviter les doublons
+  onAddNewTag,
+  onAddTag,
+  existingTags = [],
+  showCreateButton = true,
+  autoFocus = false,
+  onCancel = null,
+  size = 'normal'
 }) => {
   const [newTag, setNewTag] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Non classée');
 
   const handleCreateTag = (e) => {
     e.preventDefault();
@@ -19,12 +25,28 @@ const TagCreator = ({
       
       if (typeof addTagFunction === 'function') {
         tagNames.forEach(tagName => {
-          addTagFunction(tagName);
+          // Passer la catégorie si la fonction la supporte (nouvelle API)
+          if (onAddTag) {
+            addTagFunction(tagName, selectedCategory);
+          } else {
+            // Ancienne API sans catégorie
+            addTagFunction(tagName);
+          }
         });
         setNewTag('');
+        if (onCancel) onCancel();
       } else {
         console.error('No valid callback function provided to TagCreator');
       }
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleCreateTag(e);
+    }
+    if (e.key === 'Escape' && onCancel) {
+      onCancel();
     }
   };
 
@@ -33,6 +55,22 @@ const TagCreator = ({
       <h2>Créer un nouveau tag</h2>
       <form onSubmit={handleCreateTag} className="tag-creator-form">
         <div className="form-group">
+          <label htmlFor="tag-category">Catégorie</label>
+          <select
+            id="tag-category"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="category-select"
+          >
+            {TAG_CATEGORIES.map(category => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="form-group">
           <label htmlFor="global-new-tag">Nom du tag</label>
           <div className="input-group">
             <input
@@ -40,11 +78,19 @@ const TagCreator = ({
               id="global-new-tag"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={handleKeyPress}
               placeholder="Nouveaux tags (séparés par une virgule)..."
             />
-            <button type="submit" className="button">Créer</button>
+            {showCreateButton && (
+              <button type="submit" className="button">Créer</button>
+            )}
+            {onCancel && (
+              <button type="button" onClick={onCancel} className="button secondary">
+                Annuler
+              </button>
+            )}
           </div>
-          <small>Les tags créés ici seront disponibles pour toutes les personnes.</small>
+          <small>Les tags créés ici seront disponibles pour toutes les personnes dans la catégorie "{selectedCategory}".</small>
         </div>
       </form>
     </section>

@@ -414,6 +414,96 @@ main {
     /* This will be the main content area */
 }
 
+/* Styles pour les catégories de tags */
+.category-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.category-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.category-select {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: white;
+    font-size: 1rem;
+    margin-right: 0.5rem;
+    min-width: 150px;
+}
+
+.create-tag-section {
+    background-color: #f0f8ff;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #d1ecf1;
+}
+
+.form-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.new-tag-input {
+    flex-grow: 1;
+    min-width: 200px;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+/* Responsive pour les formulaires en ligne */
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .form-row > * {
+        margin-bottom: 0.5rem;
+    }
+    
+    .category-select,
+    .new-tag-input {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+/* Amélioration des tags par catégorie */
+.category-section .tags-container {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+/* Indication visuelle pour les catégories vides */
+.category-section:empty {
+    display: none;
+}
+
+/* Styles pour les dropdowns de catégorie dans TagCreator */
+.tag-creator-section .category-select {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 1rem;
+}
+
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
     body {
@@ -454,4 +544,6 @@ main {
     nav a {
         background-color: #f8f9fa;
     }
-} 
+}
+
+ 

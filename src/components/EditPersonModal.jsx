@@ -1,27 +1,53 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Tag from './Tag';
+import { TAG_CATEGORIES } from '../contexts/ContactsContext';
 
-const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCreateTags }) => {
+const EditPersonModal = ({ 
+  person, 
+  onUpdate, 
+  onSave,
+  onCancel, 
+  onClose,
+  existingTags, 
+  availableTags,
+  onSaveAndCreateTags 
+}) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [personTags, setPersonTags] = useState([]);
   const [newTag, setNewTag] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Non classée');
+
+  const normalizedTags = useMemo(() => {
+    if (existingTags && Array.isArray(existingTags)) {
+      return existingTags;
+    } else if (availableTags && Array.isArray(availableTags)) {
+      return availableTags.map(tag => 
+        typeof tag === 'string' ? { 
+          name: tag, 
+          is_priority: false, 
+          category: 'Non classée' 
+        } : tag
+      );
+    }
+    return [];
+  }, [existingTags, availableTags]);
 
   useEffect(() => {
-    if (person && existingTags) {
+    if (person && normalizedTags.length > 0) {
       setFirstname(person.firstname);
       setLastname(person.lastname);
-      const initialTags = existingTags.filter(tagObject => person.tags?.includes(tagObject.name));
+      const initialTags = normalizedTags.filter(tagObject => person.tags?.includes(tagObject.name));
       setPersonTags(initialTags);
     }
-  }, [person?.id, existingTags]);
+  }, [person?.id, normalizedTags]);
 
   useEffect(() => {
-    if (person && existingTags) {
-       const updatedTags = existingTags.filter(tagObject => person.tags?.includes(tagObject.name));
+    if (person && normalizedTags.length > 0) {
+       const updatedTags = normalizedTags.filter(tagObject => person.tags?.includes(tagObject.name));
        setPersonTags(updatedTags);
     }
-  }, [person?.tags, existingTags]);
+  }, [person?.tags, normalizedTags]);
 
   if (!person) return null;
 
@@ -33,7 +59,20 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
       lastname: lastname.trim(), 
       tags: personTags.map(t => t.name)
     };
-    onUpdate(updatedPerson);
+    
+    if (onUpdate) {
+      onUpdate(updatedPerson);
+    } else if (onSave) {
+      onSave(updatedPerson);
+    }
+  };
+
+  const handleClose = () => {
+    if (onCancel) {
+      onCancel();
+    } else if (onClose) {
+      onClose();
+    }
   };
 
   const handleSaveAndCreate = () => {
@@ -42,13 +81,26 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
       .filter(tag => tag.length > 0);
 
     if (newTagNames.length > 0 && onSaveAndCreateTags) {
+      // Créer les objets tags pour les nouveaux tags avec catégorie
+      const newTagObjects = newTagNames.map(name => ({ 
+        name, 
+        is_priority: false, 
+        category: selectedCategory 
+      }));
+      
+      // Ajouter automatiquement les nouveaux tags aux tags assignés
+      setPersonTags(prevTags => [...prevTags, ...newTagObjects]);
+      
+      // Préparer la personne avec tous les tags (existants + nouveaux)
+      const allTagNames = [...personTags.map(t => t.name), ...newTagNames];
       const personWithCurrentState = { 
           ...person, 
           firstname: firstname.trim(), 
           lastname: lastname.trim(), 
-          tags: personTags.map(t => t.name)
+          tags: allTagNames
       };
-      onSaveAndCreateTags(personWithCurrentState, newTagNames);
+      
+      onSaveAndCreateTags(personWithCurrentState, newTagNames, selectedCategory);
       setNewTag('');
     }
   };
@@ -61,17 +113,29 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
     );
   };
 
-  const [priorityTags, otherTags] = useMemo(() => {
-      const assignedTagNames = new Set(personTags.map(t => t.name));
-      const priority = existingTags.filter(t => t.is_priority && !assignedTagNames.has(t.name));
-      const other = existingTags.filter(t => !t.is_priority && !assignedTagNames.has(t.name));
-      return [priority, other];
-  }, [existingTags, personTags]);
+  // Grouper les tags par catégorie pour l'affichage
+  const tagsByCategory = useMemo(() => {
+    if (!normalizedTags || !Array.isArray(normalizedTags)) {
+      return {};
+    }
+    
+    const assignedTagNames = new Set(personTags.map(t => t.name));
+    const availableTagsByCategory = {};
+    
+    TAG_CATEGORIES.forEach(category => {
+      availableTagsByCategory[category] = normalizedTags.filter(tag => 
+        (tag.category === category || (!tag.category && category === 'Non classée')) && 
+        !assignedTagNames.has(tag.name)
+      );
+    });
+    
+    return availableTagsByCategory;
+  }, [normalizedTags, personTags]);
 
   return (
     <div className="modal">
       <div className="modal-content">
-        <span className="close-button" onClick={onCancel}>&times;</span>
+        <span className="close-button" onClick={handleClose}>&times;</span>
         <h2>Modifier la personne</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -113,42 +177,69 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
               )}
             </div>
           </div>
-          {priorityTags.length > 0 && (
+          
+          {/* Affichage des tags disponibles par catégorie */}
+          {Object.keys(tagsByCategory).length > 0 && (
             <div className="form-group">
-              <label>Tags prioritaires</label>
-              <div className="tags-container">
-                {priorityTags.map(tag => (
-                  <Tag key={tag.name} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>{tag.name}</Tag>
-                ))}
-              </div>
+              <label>Tags disponibles par catégorie</label>
+              {TAG_CATEGORIES.map(category => {
+                const categoryTags = tagsByCategory[category] || [];
+                
+                if (categoryTags.length === 0) return null;
+                
+                return (
+                  <div key={category} className="category-section">
+                    <h4 className="category-title">{category}</h4>
+                    <div className="tags-container">
+                      {categoryTags.map(tag => (
+                        <Tag 
+                          key={tag.name} 
+                          onClick={() => handleToggleTag(tag)} 
+                          isPriority={tag.is_priority}
+                        >
+                          {tag.name}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-          {otherTags.length > 0 && (
-            <div className="form-group">
-              <label>Autres tags</label>
-              <div className="tags-container">
-                {otherTags.map(tag => (
-                  <Tag key={tag.name} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>{tag.name}</Tag>
-                ))}
-              </div>
-            </div>
-          )}
+          
           <div className="form-group">
-            <label htmlFor="modal-new-tag">Ou créer, sauvegarder et assigner</label>
-            <div className="input-group">
-              <input
-                type="text"
-                id="modal-new-tag"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="Nouveaux tags (séparés par une virgule)..."
-              />
-              <button type="button" onClick={handleSaveAndCreate} className="button">Créer & Sauvegarder</button>
+            <label htmlFor="modal-new-tag">Créer et assigner un nouveau tag</label>
+            <div className="create-tag-section">
+              <div className="form-row">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="category-select"
+                >
+                  {TAG_CATEGORIES.map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  id="modal-new-tag"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Nouveaux tags (séparés par une virgule)..."
+                  className="new-tag-input"
+                />
+                <button type="button" onClick={handleSaveAndCreate} className="button">
+                  Créer & Sauvegarder
+                </button>
+              </div>
             </div>
           </div>
+          
           <div className="modal-actions">
             <button type="submit" className="button">Enregistrer & Fermer</button>
-            <button type="button" className="button secondary" onClick={onCancel}>Annuler</button>
+            <button type="button" className="button secondary" onClick={handleClose}>Annuler</button>
           </div>
         </form>
       </div>

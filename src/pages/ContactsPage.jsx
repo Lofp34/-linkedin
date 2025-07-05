@@ -95,9 +95,9 @@ const ContactsPage = () => {
         setSelectedPeople(new Set());
     };
 
-    const handleAddNewTagToSystem = async (newTagName) => {
+    const handleAddNewTagToSystem = async (newTagName, category = 'Non classée') => {
         try {
-            await addTagToSystem(newTagName);
+            await addTagToSystem(newTagName, category);
         } catch (error) {
             console.error("Error adding tag:", error);
         }
@@ -124,16 +124,20 @@ const ContactsPage = () => {
         }
     };
 
-    const handleSaveAndCreateTags = async (personWithLocalChanges, newTagNames) => {
+    const handleSaveAndCreateTags = async (personWithLocalChanges, newTagNames, category = 'Non classée') => {
         try {
             // Créer les nouveaux tags d'abord
             for (const tagName of newTagNames) {
-                await addTagToSystem(tagName);
+                await addTagToSystem(tagName, category);
             }
             
-            // Ensuite mettre à jour la personne
+            // Ensuite mettre à jour la personne (qui contient déjà les nouveaux tags)
             await updatePerson(personWithLocalChanges);
-            setEditingPerson(null);
+            
+            // Mettre à jour editingPerson avec les nouvelles données pour rafraîchir le modal
+            setEditingPerson(personWithLocalChanges);
+            
+            // NE PAS fermer le modal - on garde l'ancien comportement
         } catch (error) {
             console.error("Error saving person and creating tags:", error);
         }
