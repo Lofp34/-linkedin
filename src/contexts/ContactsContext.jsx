@@ -361,6 +361,29 @@ export const ContactsProvider = ({ children }) => {
     }
   }, [session]);
 
+  // Changer la catégorie d'un tag
+  const updateTagCategory = useCallback(async (tagName, newCategory) => {
+    if (!session) return;
+    try {
+      const { error } = await supabase
+        .from('tags')
+        .update({ category: newCategory })
+        .eq('name', tagName);
+      
+      if (error) throw error;
+
+      // Mise à jour optimiste
+      setAllUniqueTags(prevTags =>
+        prevTags.map(tag =>
+          tag.name === tagName ? { ...tag, category: newCategory } : tag
+        )
+      );
+    } catch (error) {
+      console.error("Error updating tag category:", error);
+      throw error;
+    }
+  }, [session]);
+
   // === OPÉRATIONS EN MASSE ===
 
   // Ajouter des tags à plusieurs contacts
@@ -487,6 +510,7 @@ export const ContactsProvider = ({ children }) => {
     addTagToSystem,
     deleteTagFromSystem,
     toggleTagPriority,
+    updateTagCategory,
     
     // Opérations en masse
     bulkAddTags,

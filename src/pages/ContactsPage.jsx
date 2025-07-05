@@ -25,6 +25,7 @@ const ContactsPage = () => {
         bulkAddTags,
         bulkRemoveTags,
         addTagToSystem,
+        updateTagCategory,
         importPeople
     } = useContacts();
 
@@ -143,6 +144,14 @@ const ContactsPage = () => {
         }
     };
 
+    const handleUpdateTagCategory = async (tagName, newCategory) => {
+        try {
+            await updateTagCategory(tagName, newCategory);
+        } catch (error) {
+            console.error("Error updating tag category:", error);
+        }
+    };
+
     const handleDeletePerson = async (personId) => {
         if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette personne ?")) {
             return;
@@ -242,6 +251,7 @@ const ContactsPage = () => {
                     onSave={handleUpdatePerson}
                     onSaveAndCreateTags={handleSaveAndCreateTags}
                     availableTags={allUniqueTags}
+                    onUpdateTagCategory={handleUpdateTagCategory}
                 />
             )}
 

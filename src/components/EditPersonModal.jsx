@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import Tag from './Tag';
 import { TAG_CATEGORIES } from '../contexts/ContactsContext';
 
@@ -10,7 +11,8 @@ const EditPersonModal = ({
   onClose,
   existingTags, 
   availableTags,
-  onSaveAndCreateTags 
+  onSaveAndCreateTags,
+  onUpdateTagCategory 
 }) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
@@ -132,6 +134,26 @@ const EditPersonModal = ({
     return availableTagsByCategory;
   }, [normalizedTags, personTags]);
 
+  // Gestionnaire du drag & drop
+  const handleOnDragEnd = (result) => {
+    const { destination, source, draggableId } = result;
+
+    // Pas de destination = drop annulé
+    if (!destination) return;
+
+    // Pas de changement de position
+    if (destination.droppableId === source.droppableId) return;
+
+    // Extraire le nom du tag de l'ID draggable
+    const tagName = draggableId.replace('tag-', '');
+    const newCategory = destination.droppableId;
+
+    // Mettre à jour la catégorie du tag
+    if (onUpdateTagCategory) {
+      onUpdateTagCategory(tagName, newCategory);
+    }
+  };
+
   return (
     <div className="modal">
       <div className="modal-content">
@@ -178,32 +200,64 @@ const EditPersonModal = ({
             </div>
           </div>
           
-          {/* Affichage des tags disponibles par catégorie */}
+          {/* Affichage des tags disponibles par catégorie avec drag & drop */}
           {Object.keys(tagsByCategory).length > 0 && (
             <div className="form-group">
               <label>Tags disponibles par catégorie</label>
-              {TAG_CATEGORIES.map(category => {
-                const categoryTags = tagsByCategory[category] || [];
-                
-                if (categoryTags.length === 0) return null;
-                
-                return (
-                  <div key={category} className="category-section">
-                    <h4 className="category-title">{category}</h4>
-                    <div className="tags-container">
-                      {categoryTags.map(tag => (
-                        <Tag 
-                          key={tag.name} 
-                          onClick={() => handleToggleTag(tag)} 
-                          isPriority={tag.is_priority}
-                        >
-                          {tag.name}
-                        </Tag>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+              <p style={{ fontSize: '0.9em', color: '#666', margin: '5px 0 15px 0' }}>
+                💡 Glissez-déposez les tags pour changer leur catégorie
+              </p>
+              <DragDropContext onDragEnd={handleOnDragEnd}>
+                <div className="tags-by-category">
+                  {TAG_CATEGORIES.map(category => {
+                    const categoryTags = tagsByCategory[category] || [];
+                    
+                    return (
+                      <div key={category} className="category-section">
+                        <h4 className="category-title">{category} ({categoryTags.length})</h4>
+                        <Droppable droppableId={category}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`tags-drop-zone ${snapshot.isDraggingOver ? 'drag-over' : ''}`}
+                            >
+                              {categoryTags.length === 0 ? (
+                                <div className="empty-category">
+                                  Aucun tag disponible
+                                </div>
+                              ) : (
+                                <div className="tags-container">
+                                  {categoryTags.map((tag, index) => (
+                                    <Draggable key={tag.name} draggableId={`tag-${tag.name}`} index={index}>
+                                      {(provided, snapshot) => (
+                                        <div
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                          className={snapshot.isDragging ? 'dragging' : ''}
+                                        >
+                                          <Tag 
+                                            onClick={() => handleToggleTag(tag)} 
+                                            isPriority={tag.is_priority}
+                                          >
+                                            {tag.name}
+                                          </Tag>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                </div>
+                              )}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </div>
+                    );
+                  })}
+                </div>
+              </DragDropContext>
             </div>
           )}
           
@@ -243,6 +297,69 @@ const EditPersonModal = ({
           </div>
         </form>
       </div>
+      
+      <style jsx>{`
+        .tags-by-category {
+          max-height: 400px;
+          overflow-y: auto;
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 10px;
+          background-color: #fafafa;
+        }
+        
+        .category-section {
+          margin-bottom: 1.5rem;
+          background-color: white;
+          border-radius: 6px;
+          border-left: 3px solid var(--primary-color);
+          overflow: hidden;
+        }
+        
+        .category-title {
+          margin: 0;
+          padding: 8px 12px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: var(--primary-color);
+          background-color: #f8f9fa;
+          border-bottom: 1px solid #e9ecef;
+        }
+        
+        .tags-drop-zone {
+          min-height: 50px;
+          padding: 8px 12px;
+          transition: background-color 0.2s ease;
+        }
+        
+        .tags-drop-zone.drag-over {
+          background-color: #e3f2fd;
+          border: 2px dashed var(--primary-color);
+        }
+        
+        .empty-category {
+          text-align: center;
+          color: #999;
+          font-style: italic;
+          padding: 15px;
+          font-size: 0.9em;
+        }
+        
+        .tags-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+        
+        .dragging {
+          opacity: 0.8;
+          transform: rotate(3deg);
+        }
+        
+        .dragging .tag {
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+      `}</style>
     </div>
   );
 };
