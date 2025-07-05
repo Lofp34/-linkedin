@@ -1,6 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 
+// Catégories disponibles pour les tags
+export const TAG_CATEGORIES = [
+  'Ville',
+  'Secteur d\'activité',
+  'Poste',
+  'Entreprise',
+  'Taille d\'entreprise',
+  'Type de relation',
+  'Compétences',
+  'Centre d\'intérêt',
+  'Statut',
+  'Source',
+  'Non classée'
+];
+
 // Créer le contexte
 const ContactsContext = createContext();
 
@@ -36,24 +51,28 @@ export const ContactsProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Récupération des tags avec gestion robuste
+  // Récupération des tags avec catégories
   const fetchAllTags = useCallback(async () => {
     if (!session) return;
     try {
       let { data: tagsData, error: tagsError } = await supabase
         .from('tags')
-        .select('name, is_priority')
-        .order('name');
+        .select('name, is_priority, category')
+        .order('category, name');
 
       if (tagsError) {
-        console.warn("Could not fetch 'is_priority'. Falling back to names only.");
+        console.warn("Could not fetch all columns. Falling back to basic data.");
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('tags')
           .select('name')
           .order('name');
         
         if (fallbackError) throw fallbackError;
-        tagsData = fallbackData.map(tag => ({ name: tag.name, is_priority: false }));
+        tagsData = fallbackData.map(tag => ({ 
+          name: tag.name, 
+          is_priority: false, 
+          category: 'Non classée' 
+        }));
       }
       
       setAllUniqueTags(tagsData || []);
@@ -257,13 +276,16 @@ export const ContactsProvider = ({ children }) => {
 
   // === OPÉRATIONS POUR LES TAGS ===
 
-  // Ajouter un tag au système
-  const addTagToSystem = useCallback(async (tagName) => {
+  // Ajouter un tag au système avec catégorie
+  const addTagToSystem = useCallback(async (tagName, category = 'Non classée') => {
     if (!session) return;
     try {
       const { data, error } = await supabase
         .from('tags')
-        .insert([{ name: tagName.trim() }])
+        .insert([{ 
+          name: tagName.trim(),
+          category: category 
+        }])
         .select();
       
       if (error && error.code !== '23505') { // Ignore duplicate errors
@@ -433,27 +455,35 @@ export const ContactsProvider = ({ children }) => {
     }
   }, [session, addPerson]);
 
-  // Valeur du contexte
-  const value = {
-    // États
+  // Fonction utile pour grouper les tags par catégorie
+  const getTagsByCategory = useCallback(() => {
+    const grouped = {};
+    TAG_CATEGORIES.forEach(category => {
+      grouped[category] = allUniqueTags.filter(tag => tag.category === category);
+    });
+    return grouped;
+  }, [allUniqueTags]);
+
+  // Valeurs exposées par le contexte
+  const contextValue = {
+    // État
+    session,
     people,
     allUniqueTags,
-    session,
     loading,
     operationLoading,
     
-    // Fonctions de refresh
-    fetchAllData,
-    fetchAllPeople,
-    fetchAllTags,
+    // Données utiles
+    TAG_CATEGORIES,
+    getTagsByCategory,
     
-    // Opérations sur les contacts
+    // Opérations CRUD pour les contacts
     addPerson,
     updatePerson,
     deletePerson,
     deleteMultiplePeople,
     
-    // Opérations sur les tags
+    // Opérations pour les tags
     addTagToSystem,
     deleteTagFromSystem,
     toggleTagPriority,
@@ -461,13 +491,16 @@ export const ContactsProvider = ({ children }) => {
     // Opérations en masse
     bulkAddTags,
     bulkRemoveTags,
+    importPeople,
     
-    // Import
-    importPeople
+    // Fonctions de rafraîchissement
+    fetchAllTags,
+    fetchAllPeople,
+    fetchAllData
   };
 
   return (
-    <ContactsContext.Provider value={value}>
+    <ContactsContext.Provider value={contextValue}>
       {children}
     </ContactsContext.Provider>
   );
