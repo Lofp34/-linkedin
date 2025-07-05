@@ -210,43 +210,57 @@ const ContactsPage = () => {
         }
     };
 
-    const handleUpdatePerson = async (updatedPerson) => {
+    const handleUpdatePerson = async (updatedPerson, closeModal = true) => {
         setLoading(true);
         try {
-            // 1. Update person's details
-            const { error: updateError } = await supabase
-                .from('people')
-                .update({ 
-                    firstname: updatedPerson.firstname, 
-                    lastname: updatedPerson.lastname
-                })
-                .eq('id', updatedPerson.id);
-            if (updateError) throw updateError;
-
-            // 2. Get all tag IDs for the new tag set
-            const { data: tagsData, error: tagsError } = await supabase.from('tags').select('id, name').in('name', updatedPerson.tags);
-            if (tagsError) throw tagsError;
-
-            // 3. Remove all existing tag associations for this person
+            await supabase.from('people').update({ firstname: updatedPerson.firstname, lastname: updatedPerson.lastname }).eq('id', updatedPerson.id);
+            const { data: tagsData } = await supabase.from('tags').select('id, name').in('name', updatedPerson.tags);
             await supabase.from('person_tags').delete().eq('person_id', updatedPerson.id);
-
-            // 4. Insert new associations
             const newAssociations = tagsData.map(tag => ({ person_id: updatedPerson.id, tag_id: tag.id }));
             if (newAssociations.length > 0) {
                 await supabase.from('person_tags').insert(newAssociations);
             }
+            
+            // Optimistic UI update instead of full refetch
+            setPeople(prevPeople => prevPeople.map(p => p.id === updatedPerson.id ? updatedPerson : p));
 
-            await fetchAllData();
+            if (closeModal) {
+                setEditingPerson(null);
+            }
+            return updatedPerson; // Return updated person for chaining
         } catch (error) {
             console.error("Error updating person:", error);
         } finally {
             setLoading(false);
-            setEditingPerson(null);
-            // Ensure the contact list is open after an edit
-            setOpenSections(prev => ({ ...prev, contactList: true }));
         }
     };
-    
+
+    const handleSaveAndCreateTags = async (personToUpdate, newTagNames) => {
+        // Step 1: Save the person's current state WITHOUT closing the modal
+        const updatedPerson = await handleUpdatePerson(personToUpdate, false);
+
+        if (updatedPerson) {
+            // Step 2: Create the new tags
+            const newTagsToInsert = newTagNames.map(name => ({ name }));
+            if (newTagsToInsert.length > 0) {
+                const { data: createdTags, error } = await supabase.from('tags').insert(newTagsToInsert).select();
+                if (error) {
+                    console.error("Error creating new tags:", error);
+                    return;
+                }
+                
+                // Step 3: Optimistically update the list of all available tags
+                if (createdTags) {
+                    const createdTagNames = createdTags.map(t => t.name);
+                    setAllUniqueTags(prev => [...new Set([...prev, ...createdTagNames])].sort());
+                }
+            }
+            
+            // Step 4: Update the person being edited to keep the modal in sync
+            setEditingPerson(updatedPerson);
+        }
+    };
+
     const handleDeletePerson = async (personId) => {
         if (!window.confirm(`Êtes-vous sûr de vouloir supprimer cette personne ?`)) return;
         setLoading(true);
@@ -326,7 +340,7 @@ const ContactsPage = () => {
                     onUpdate={handleUpdatePerson}
                     onCancel={() => setEditingPerson(null)}
                     existingTags={allUniqueTags}
-                    onAddNewTag={handleAddNewTagToSystem}
+                    onSaveAndCreateTags={handleSaveAndCreateTags}
                 />
             )}
 

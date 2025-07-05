@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Tag from './Tag';
 
-const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onAddNewTag }) => {
+const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCreateTags }) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [personTags, setPersonTags] = useState([]);
@@ -13,28 +13,27 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onAddNewTag
       setLastname(person.lastname);
       setPersonTags(person.tags || []);
     }
-  }, [person]);
+    // This effect should ONLY run when we open the modal for a NEW person.
+    // We listen to person.id to prevent re-renders from erasing local state.
+  }, [person?.id]);
 
   if (!person) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const updatedPerson = { ...person, firstname: firstname.trim(), lastname: lastname.trim(), tags: personTags };
-    onUpdate(updatedPerson);
+    onUpdate(updatedPerson); // This will close the modal by default
   };
 
-  const handleCreateNewTag = () => {
-    const tagNames = newTag.split(',')
+  const handleSaveAndCreate = () => {
+    const newTagNames = newTag.split(',')
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
 
-    if (tagNames.length > 0 && onAddNewTag) {
-      tagNames.forEach(tagName => {
-        onAddNewTag(tagName);
-        // Automatically add the new tag to the person
-        handleToggleTag(tagName);
-      });
-      setNewTag('');
+    if (newTagNames.length > 0 && onSaveAndCreateTags) {
+      const personWithCurrentState = { ...person, firstname: firstname.trim(), lastname: lastname.trim(), tags: personTags };
+      onSaveAndCreateTags(personWithCurrentState, newTagNames);
+      setNewTag(''); // Clear the input
     }
   };
 
@@ -45,6 +44,14 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onAddNewTag
         : [...prevTags, tag]
     );
   };
+  
+  // Update local state if the person prop changes from the parent
+  // This is how the modal stays in sync after a save-and-create action
+  useEffect(() => {
+    if (person) {
+      setPersonTags(person.tags || []);
+    }
+  }, [person?.tags]);
 
   return (
     <div className="modal">
@@ -93,20 +100,20 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onAddNewTag
             </div>
           </div>
           <div className="form-group">
-            <label htmlFor="modal-new-tag">Ou créer un nouveau tag</label>
+            <label htmlFor="modal-new-tag">Ou créer, sauvegarder et assigner</label>
             <div className="input-group">
               <input
                 type="text"
                 id="modal-new-tag"
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
-                placeholder="Nom du nouveau tag..."
+                placeholder="Nouveaux tags (séparés par une virgule)..."
               />
-              <button type="button" onClick={handleCreateNewTag} className="button">Créer</button>
+              <button type="button" onClick={handleSaveAndCreate} className="button">Créer & Sauvegarder</button>
             </div>
           </div>
           <div className="modal-actions">
-            <button type="submit" className="button">Enregistrer</button>
+            <button type="submit" className="button">Enregistrer & Fermer</button>
             <button type="button" className="button secondary" onClick={onCancel}>Annuler</button>
           </div>
         </form>
