@@ -40,6 +40,7 @@ const GenerationPage = () => {
     const [selectedPeople, setSelectedPeople] = useState(new Set());
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [openCategory, setOpenCategory] = useState(null); // Pour le mode accordion
 
     // This is now the single source of truth for the text to be copied
     const textToCopy = useMemo(() => {
@@ -236,11 +237,51 @@ const GenerationPage = () => {
         setSolicitedBefore(date ? date.toISOString() : null);
     };
 
+    const handleCategoryToggle = (categoryTitle) => {
+        setOpenCategory(openCategory === categoryTitle ? null : categoryTitle);
+    };
+
     return (
         <div className="generation-page">
-            <h2>Génération de Mentions @</h2>
+            {/* Résultats en premier */}
+            <div className="results-section">
+                <h3>Résultats ({filteredPeople.length})</h3>
+                
+                {loading && <div>Chargement des résultats...</div>}
+                
+                {!loading && filteredPeople.length === 0 && (
+                    <div>Aucun résultat trouvé avec ces filtres.</div>
+                )}
+                
+                {!loading && filteredPeople.length > 0 && (
+                    <>
+                        <FilteredResult
+                            people={filteredPeople}
+                            textToCopy={textToCopy}
+                            onCopy={handleCopyToClipboard}
+                        />
+                        
+                        {selectedPeople.size > 0 && (
+                            <BulkActionsBar
+                                selectedCount={selectedPeople.size}
+                                onSelectAll={handleSelectAll}
+                                onDeselectAll={handleDeselectAll}
+                                onBulkEdit={() => setIsBulkEditModalOpen(true)}
+                                onBulkDelete={handleDeleteSelected}
+                            />
+                        )}
+                        
+                        <PersonList
+                            people={filteredPeople}
+                            onSelect={handleSelectPerson}
+                            selectedPeople={selectedPeople}
+                            showActions={false}
+                        />
+                    </>
+                )}
+            </div>
             
-            {/* Filtres */}
+            {/* Filtres en second */}
             <div className="filters-section">
                 <h3>Filtres</h3>
                 
@@ -257,7 +298,9 @@ const GenerationPage = () => {
                                     key={category}
                                     title={category}
                                     itemCount={categoryTags.length}
-                                    isOpenByDefault={false}
+                                    isAccordionMode={true}
+                                    isOpen={openCategory === category}
+                                    onToggle={handleCategoryToggle}
                                 >
                                     <div className="tag-filter-container">
                                         {categoryTags.map(tag => (
@@ -303,44 +346,6 @@ const GenerationPage = () => {
                 <button onClick={handleResetFilters} className="button secondary">
                     Réinitialiser les filtres
                 </button>
-            </div>
-
-            {/* Résultats */}
-            <div className="results-section">
-                <h3>Résultats ({filteredPeople.length})</h3>
-                
-                {loading && <div>Chargement des résultats...</div>}
-                
-                {!loading && filteredPeople.length === 0 && (
-                    <div>Aucun résultat trouvé avec ces filtres.</div>
-                )}
-                
-                {!loading && filteredPeople.length > 0 && (
-                    <>
-                        <FilteredResult
-                            people={filteredPeople}
-                            textToCopy={textToCopy}
-                            onCopy={handleCopyToClipboard}
-                        />
-                        
-                        {selectedPeople.size > 0 && (
-                            <BulkActionsBar
-                                selectedCount={selectedPeople.size}
-                                onSelectAll={handleSelectAll}
-                                onDeselectAll={handleDeselectAll}
-                                onBulkEdit={() => setIsBulkEditModalOpen(true)}
-                                onBulkDelete={handleDeleteSelected}
-                            />
-                        )}
-                        
-                        <PersonList
-                            people={filteredPeople}
-                            onSelect={handleSelectPerson}
-                            selectedPeople={selectedPeople}
-                            showActions={false}
-                        />
-                    </>
-                )}
             </div>
 
             {/* Modals */}

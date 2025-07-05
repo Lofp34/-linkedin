@@ -4,12 +4,24 @@ const CollapsibleTagSection = ({
   title, 
   children, 
   isOpenByDefault = false, 
-  itemCount = 0 
+  itemCount = 0,
+  isAccordionMode = false,
+  isOpen: externalIsOpen,
+  onToggle
 }) => {
-  const [isOpen, setIsOpen] = useState(isOpenByDefault);
+  const [internalIsOpen, setInternalIsOpen] = useState(isOpenByDefault);
+  
+  // Utiliser l'état externe si fourni (mode accordion), sinon l'état interne
+  const isOpen = isAccordionMode ? externalIsOpen : internalIsOpen;
 
   const toggleOpen = () => {
-    setIsOpen(!isOpen);
+    if (isAccordionMode && onToggle) {
+      // En mode accordion, notifier le parent
+      onToggle(title);
+    } else {
+      // Mode normal, gérer l'état localement
+      setInternalIsOpen(!internalIsOpen);
+    }
   };
 
   return (
