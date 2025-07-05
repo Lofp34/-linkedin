@@ -32,7 +32,7 @@ const AppLayout = ({ onLogout, onOpenSettings }) => (
 
 // Composant interne qui a accès au contexte
 const AppContent = () => {
-  const { session, allUniqueTags, deleteTagFromSystem, toggleTagPriority, fetchAllTags } = useContacts();
+  const { session, allUniqueTags, deleteTagFromSystem, toggleTagPriority, updateTagCategory, fetchAllTags } = useContacts();
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const handleOpenSettings = async () => {
@@ -66,6 +66,14 @@ const AppContent = () => {
     }
   };
 
+  const handleUpdateTagCategory = async (tagName, newCategory) => {
+    try {
+      await updateTagCategory(tagName, newCategory);
+    } catch (error) {
+      console.error("Error updating tag category:", error);
+    }
+  };
+
   return (
     <>
       <Routes>
@@ -83,6 +91,7 @@ const AppContent = () => {
         tags={allUniqueTags}
         onDeleteTag={handleDeleteTag}
         onTogglePriority={handleTogglePriority}
+        onUpdateTagCategory={handleUpdateTagCategory}
       />
     </>
   );
