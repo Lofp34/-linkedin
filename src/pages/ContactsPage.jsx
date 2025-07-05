@@ -9,6 +9,7 @@ import TagCreator from '../components/TagCreator';
 import BulkActionsBar from '../components/BulkActionsBar';
 import BulkEditTagsModal from '../components/BulkEditTagsModal';
 import CollapsibleSection from '../components/CollapsibleSection';
+import EditPersonModal from '../components/EditPersonModal';
 
 const ContactsPage = () => {
     const [people, setPeople] = useState([]);
@@ -19,6 +20,7 @@ const ContactsPage = () => {
     // State for group selection & modal
     const [selectedPeople, setSelectedPeople] = useState(new Set());
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+    const [editingPerson, setEditingPerson] = useState(null);
 
     useEffect(() => {
         // We need to get the session to make sure we're authenticated before fetching
@@ -204,6 +206,54 @@ const ContactsPage = () => {
         }
     };
 
+    const handleUpdatePerson = async (updatedPerson) => {
+        setLoading(true);
+        try {
+            // 1. Update person's details
+            const { error: updateError } = await supabase
+                .from('people')
+                .update({ 
+                    firstname: updatedPerson.firstname, 
+                    lastname: updatedPerson.lastname
+                })
+                .eq('id', updatedPerson.id);
+            if (updateError) throw updateError;
+
+            // 2. Get all tag IDs for the new tag set
+            const { data: tagsData, error: tagsError } = await supabase.from('tags').select('id, name').in('name', updatedPerson.tags);
+            if (tagsError) throw tagsError;
+
+            // 3. Remove all existing tag associations for this person
+            await supabase.from('person_tags').delete().eq('person_id', updatedPerson.id);
+
+            // 4. Insert new associations
+            const newAssociations = tagsData.map(tag => ({ person_id: updatedPerson.id, tag_id: tag.id }));
+            if (newAssociations.length > 0) {
+                await supabase.from('person_tags').insert(newAssociations);
+            }
+
+            await fetchAllData();
+        } catch (error) {
+            console.error("Error updating person:", error);
+        } finally {
+            setLoading(false);
+            setEditingPerson(null); // Close modal
+        }
+    };
+    
+    const handleDeletePerson = async (personId) => {
+        if (!window.confirm(`Êtes-vous sûr de vouloir supprimer cette personne ?`)) return;
+        setLoading(true);
+        try {
+            await supabase.from('people').delete().eq('id', personId);
+            await fetchAllData();
+        } catch (error) {
+            console.error("Error deleting person:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) {
         return <div>Chargement de vos contacts...</div>
     }
@@ -235,10 +285,21 @@ const ContactsPage = () => {
                     people={people} 
                     selectedIds={Array.from(selectedPeople)}
                     onToggleSelect={handleSelectPerson}
-                    showActions={false}
+                    showActions={true}
+                    onStartEdit={setEditingPerson}
+                    onDelete={handleDeletePerson}
                 />
             </CollapsibleSection>
             
+            {editingPerson && (
+                <EditPersonModal
+                    person={editingPerson}
+                    onUpdate={handleUpdatePerson}
+                    onCancel={() => setEditingPerson(null)}
+                    existingTags={allUniqueTags}
+                />
+            )}
+
             {isBulkEditModalOpen && (
                 <BulkEditTagsModal
                     isOpen={isBulkEditModalOpen}

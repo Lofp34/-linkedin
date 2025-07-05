@@ -35,7 +35,7 @@ const PersonItem = ({ person, onDelete, onStartEdit, onToggleSelect, isSelected,
             </div>
             {showActions && (
                 <div className="person-list-actions">
-                    <button onClick={() => onStartEdit(person)} className="button secondary">Modifier</button>
+                    <button onClick={() => onStartEdit(person)} className="button secondary">Modifier Tags</button>
                     <button onClick={() => onDelete(person.id)} className="button danger">Supprimer</button>
                 </div>
             )}
