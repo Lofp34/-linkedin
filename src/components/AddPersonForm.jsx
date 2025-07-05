@@ -1,10 +1,31 @@
 import React, { useState } from 'react';
 import Tag from './Tag';
 
-const AddPersonForm = ({ onAddPerson, existingTags }) => {
+const AddPersonForm = ({ 
+  onAddPerson, // Ancienne API
+  onSubmit, // Nouvelle API
+  existingTags, // Ancienne API (array d'objets)
+  availableTags, // Nouvelle API (array de strings)
+  onAddNewTag // Nouvelle API pour créer des tags
+}) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [personTags, setPersonTags] = useState([]);
+
+  // Normaliser les tags pour les deux APIs
+  const normalizedTags = (() => {
+    if (existingTags && Array.isArray(existingTags)) {
+      // Ancienne API : array d'objets avec { name, is_priority }
+      return existingTags;
+    } else if (availableTags && Array.isArray(availableTags)) {
+      // Nouvelle API : array de strings
+      return availableTags.map(tagName => ({
+        name: typeof tagName === 'string' ? tagName : tagName.name,
+        is_priority: typeof tagName === 'object' ? tagName.is_priority : false
+      }));
+    }
+    return [];
+  })();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -16,7 +37,13 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
       lastname: lastname.trim(),
       tags: personTags.map(t => t.name)
     };
-    onAddPerson(newPerson);
+
+    // Appeler la fonction appropriée selon l'API
+    if (onSubmit) {
+      onSubmit(newPerson); // Nouvelle API
+    } else if (onAddPerson) {
+      onAddPerson(newPerson); // Ancienne API
+    }
 
     // Reset form
     setFirstname('');
@@ -78,7 +105,7 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
         <div className="form-group">
             <label>Cliquer pour assigner un tag existant</label>
             <div className="tags-container">
-                {existingTags
+                {normalizedTags
                     .filter(tag => !personTags.some(pt => pt.name === tag.name))
                     .map(tag => (
                         <Tag key={tag.name} isActive={false} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>

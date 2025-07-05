@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 
-const TagCreator = ({ onAddNewTag }) => {
+const TagCreator = ({ 
+  onAddNewTag, // Ancienne API
+  onAddTag,    // Nouvelle API
+  existingTags // Pour éviter les doublons
+}) => {
   const [newTag, setNewTag] = useState('');
 
   const handleCreateTag = (e) => {
@@ -10,10 +14,17 @@ const TagCreator = ({ onAddNewTag }) => {
       .filter(tag => tag !== '');
 
     if (tagNames.length > 0) {
-      tagNames.forEach(tagName => {
-        onAddNewTag(tagName);
-      });
-      setNewTag('');
+      // Utiliser la fonction disponible selon l'API
+      const addTagFunction = onAddTag || onAddNewTag;
+      
+      if (typeof addTagFunction === 'function') {
+        tagNames.forEach(tagName => {
+          addTagFunction(tagName);
+        });
+        setNewTag('');
+      } else {
+        console.error('No valid callback function provided to TagCreator');
+      }
     }
   };
 

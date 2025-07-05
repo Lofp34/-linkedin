@@ -1,7 +1,43 @@
 import React from 'react';
 import PersonItem from './PersonItem';
 
-const PersonList = ({ people, onDelete, onStartEdit, selectedIds, onToggleSelect, showActions }) => {
+const PersonList = ({ 
+  people, 
+  onDelete, 
+  onEdit,
+  onStartEdit,
+  selectedIds,
+  selectedPeople,
+  onToggleSelect,
+  onSelect,
+  showActions 
+}) => {
+  const isPersonSelected = (personId) => {
+    if (selectedPeople && selectedPeople.has) {
+      return selectedPeople.has(personId);
+    }
+    if (selectedIds && selectedIds.includes) {
+      return selectedIds.includes(personId);
+    }
+    return false;
+  };
+
+  const handleSelect = (personId) => {
+    if (onSelect) {
+      onSelect(personId);
+    } else if (onToggleSelect) {
+      onToggleSelect(personId);
+    }
+  };
+
+  const handleEdit = (person) => {
+    if (onEdit) {
+      onEdit(person);
+    } else if (onStartEdit) {
+      onStartEdit(person);
+    }
+  };
+
   return (
     <section>
       <h2>Personnes enregistrées ({people.length})</h2>
@@ -14,9 +50,9 @@ const PersonList = ({ people, onDelete, onStartEdit, selectedIds, onToggleSelect
               key={person.id} 
               person={person}
               onDelete={onDelete}
-              onStartEdit={onStartEdit}
-              isSelected={selectedIds.includes(person.id)}
-              onToggleSelect={onToggleSelect}
+              onStartEdit={handleEdit}
+              isSelected={isPersonSelected(person.id)}
+              onToggleSelect={handleSelect}
               showActions={showActions}
             />
           ))}

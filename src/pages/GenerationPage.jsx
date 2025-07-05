@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { useContacts } from '../contexts/ContactsContext';
 import useDebounce from '../hooks/useDebounce';
 import { useSessionStorage } from '../hooks/useSessionStorage';
 
@@ -10,11 +11,20 @@ import BulkActionsBar from '../components/BulkActionsBar';
 import BulkEditTagsModal from '../components/BulkEditTagsModal';
 
 const GenerationPage = () => {
-    // Data states
+    // Utiliser le contexte pour les opérations de base
+    const {
+        session,
+        allUniqueTags,
+        deleteMultiplePeople,
+        bulkAddTags,
+        bulkRemoveTags,
+        addTagToSystem,
+        operationLoading
+    } = useContacts();
+
+    // États spécifiques à cette page
     const [filteredPeople, setFilteredPeople] = useState([]);
-    const [allUniqueTags, setAllUniqueTags] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [session, setSession] = useState(null);
 
     // Filter states are now persisted in sessionStorage
     const [tagStates, setTagStates] = useSessionStorage('generation_tagStates', {});
@@ -33,39 +43,14 @@ const GenerationPage = () => {
     // This is now the single source of truth for the text to be copied
     const textToCopy = useMemo(() => {
         return filteredPeople
-            .map(p => `@${p.firstname} ${p.lastname}`) // Corrected format with space
+            .map(p => `@${p.firstname} ${p.lastname}`)
             .join(' ');
     }, [filteredPeople]);
 
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-        });
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-        });
-        return () => subscription.unsubscribe();
-    }, []);
-
-    // Initial data fetch (all tags for the filter UI)
-    useEffect(() => {
-        const fetchInitialData = async () => {
-            if (!session) return;
-            setLoading(true);
-            try {
-                const { data: tagsData, error: tagsError } = await supabase.from('tags').select('name');
-                if (tagsError) throw tagsError;
-                setAllUniqueTags(tagsData.map(t => t.name).sort());
-            } catch (error) {
-                console.error("Error fetching initial data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (session) {
-            fetchInitialData();
-        }
-    }, [session]);
+    // Noms des tags pour les filtres (seulement les noms)
+    const tagNames = useMemo(() => {
+        return allUniqueTags.map(tag => tag.name).sort();
+    }, [allUniqueTags]);
 
     // Dynamic filtering effect
     useEffect(() => {
@@ -107,7 +92,6 @@ const GenerationPage = () => {
                 query = query.lte('solicitation_count', parseInt(debouncedMaxSolicitations, 10));
             }
             if (debouncedSolicitedBefore) {
-                // The value is already a string, we just need to format it for the query
                 const formattedDate = debouncedSolicitedBefore.split('T')[0];
                 query = query.or(`last_solicitation_date.is.null,last_solicitation_date.lte.${formattedDate}`);
             }
@@ -177,143 +161,172 @@ const GenerationPage = () => {
             return;
         }
         try {
-            setLoading(true);
-            const { error } = await supabase.from('people').delete().in('id', Array.from(selectedPeople));
-            if (error) throw error;
-            
+            await deleteMultiplePeople(Array.from(selectedPeople));
             setSelectedPeople(new Set()); // Clear selection
             setRefreshTrigger(t => t + 1); // Trigger a refresh
         } catch (error) {
             console.error("Error deleting selected people:", error);
-        } finally {
-            setLoading(false);
         }
     };
 
-    const handleBulkAddTags = async (tagsToAdd) => {
+    const handleBulkUpdateTags = async (tags, action) => {
+        const personIds = Array.from(selectedPeople);
+        if (personIds.length === 0) return;
+        
         try {
-            setLoading(true);
-            const { data: tagsData, error: tagsError } = await supabase.from('tags').select('id, name').in('name', tagsToAdd);
-            if (tagsError) throw tagsError;
-
-            const associations = Array.from(selectedPeople).flatMap(personId =>
-                tagsData.map(tag => ({ person_id: personId, tag_id: tag.id }))
-            );
-
-            if (associations.length > 0) {
-                await supabase.from('person_tags').upsert(associations, { onConflict: 'person_id, tag_id' });
+            if (action === 'add') {
+                await bulkAddTags(personIds, tags);
+            } else if (action === 'remove') {
+                await bulkRemoveTags(personIds, tags);
             }
-            setRefreshTrigger(t => t + 1); // Trigger a refresh
-        } catch (error) {
-            console.error("Error bulk adding tags:", error);
-        } finally {
-            setLoading(false);
             setIsBulkEditModalOpen(false);
             setSelectedPeople(new Set());
-        }
-    };
-
-    const handleBulkRemoveTags = async (tagsToRemove) => {
-        try {
-            setLoading(true);
-            const { data: tagsData, error: tagsError } = await supabase.from('tags').select('id').in('name', tagsToRemove);
-            if (tagsError) throw tagsError;
-            const tagIdsToRemove = tagsData.map(t => t.id);
-
-            if (tagIdsToRemove.length > 0 && selectedPeople.size > 0) {
-                await supabase.from('person_tags').delete().in('person_id', Array.from(selectedPeople)).in('tag_id', tagIdsToRemove);
-            }
             setRefreshTrigger(t => t + 1); // Trigger a refresh
         } catch (error) {
-            console.error("Error bulk removing tags:", error);
-        } finally {
-            setLoading(false);
-            setIsBulkEditModalOpen(false);
-            setSelectedPeople(new Set());
+            console.error(`Error bulk ${action}ing tags:`, error);
         }
     };
-    
+
     const handleAddNewTagToSystem = async (newTagName) => {
-        const { data, error } = await supabase.from('tags').insert([{ name: newTagName.trim() }]).select();
-        if (error && error.code !== '23505') { 
+        try {
+            await addTagToSystem(newTagName);
+        } catch (error) {
             console.error("Error adding tag:", error);
-        }
-        if (data) {
-            setRefreshTrigger(t => t + 1); // Trigger a refresh
         }
     };
 
     const handleCopyToClipboard = async () => {
-        if (!textToCopy) {
-            alert("Aucune personne à copier.");
-            return;
-        }
         try {
             await navigator.clipboard.writeText(textToCopy);
-            alert('Liste copiée dans le presse-papiers !');
-            setRefreshTrigger(t => t + 1);
+            alert("Texte copié dans le presse-papiers !");
         } catch (err) {
-            console.error('Failed to copy text: ', err);
-            alert('Erreur lors de la copie.');
+            console.error("Failed to copy text: ", err);
+            // Fallback for older browsers
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert("Texte copié dans le presse-papiers !");
+            } catch (fallbackErr) {
+                console.error("Fallback copy failed: ", fallbackErr);
+            }
+            document.body.removeChild(textArea);
         }
     };
 
-    // This function receives a Date object from the picker and stores its string representation
     const handleDateChange = (date) => {
         setSolicitedBefore(date ? date.toISOString() : null);
     };
 
-    if (loading) {
-        return <div>Chargement...</div>;
-    }
-
     return (
-        <>
-            <FilteredResult 
-                people={filteredPeople} 
-                existingTags={allUniqueTags}
-                tagStates={tagStates}
-                onToggleTag={handleToggleFilterTag}
-                onCopy={handleCopyToClipboard}
-                onReset={handleResetFilters}
-                maxSolicitations={maxSolicitations}
-                onMaxSolicitationsChange={setMaxSolicitations}
-                solicitedBefore={solicitedBefore ? new Date(solicitedBefore) : null}
-                onSolicitedBeforeChange={handleDateChange}
-                textToCopy={textToCopy}
-            />
+        <div className="generation-page">
+            <h2>Génération de Mentions @</h2>
             
-            <section>
-                <BulkActionsBar 
-                    selectedCount={selectedPeople.size}
-                    totalCount={filteredPeople.length}
-                    onSelectAll={handleSelectAll}
-                    onDeselectAll={handleDeselectAll}
-                    onDeleteSelected={handleDeleteSelected}
-                    onEditTags={() => setIsBulkEditModalOpen(true)}
-                />
-                <PersonList 
-                    people={filteredPeople} 
-                    onDelete={() => {}}
-                    onStartEdit={() => {}}
-                    selectedIds={Array.from(selectedPeople)}
-                    onToggleSelect={handleSelectPerson}
-                    showActions={false}
-                />
-            </section>
+            {/* Filtres */}
+            <div className="filters-section">
+                <h3>Filtres</h3>
+                
+                <div className="filter-group">
+                    <h4>Tags (cliquez pour filtrer)</h4>
+                    <div className="tag-filter-container">
+                        {tagNames.map(tag => (
+                            <button
+                                key={tag}
+                                className={`tag-filter ${tagStates[tag] || 'neutral'}`}
+                                onClick={() => handleToggleFilterTag(tag)}
+                            >
+                                {tag}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
-            {isBulkEditModalOpen && (
-                <BulkEditTagsModal
-                    isOpen={isBulkEditModalOpen}
-                    onClose={() => setIsBulkEditModalOpen(false)}
-                    allUniqueTags={allUniqueTags}
-                    onBulkAdd={handleBulkAddTags}
-                    onBulkRemove={handleBulkRemoveTags}
-                    selectedCount={selectedPeople.size}
-                    onAddNewTagToSystem={handleAddNewTagToSystem}
-                />
+                <div className="filter-group">
+                    <label>
+                        Nb max de sollicitations:
+                        <input
+                            type="number"
+                            value={maxSolicitations}
+                            onChange={(e) => setMaxSolicitations(e.target.value)}
+                            min="0"
+                            placeholder="Pas de limite"
+                        />
+                    </label>
+                </div>
+
+                <div className="filter-group">
+                    <label>
+                        Dernière sollicitation avant:
+                        <input
+                            type="date"
+                            value={solicitedBefore ? solicitedBefore.split('T')[0] : ''}
+                            onChange={(e) => handleDateChange(e.target.value ? new Date(e.target.value) : null)}
+                        />
+                    </label>
+                </div>
+
+                <button onClick={handleResetFilters} className="button secondary">
+                    Réinitialiser les filtres
+                </button>
+            </div>
+
+            {/* Résultats */}
+            <div className="results-section">
+                <h3>Résultats ({filteredPeople.length})</h3>
+                
+                {loading && <div>Chargement des résultats...</div>}
+                
+                {!loading && filteredPeople.length === 0 && (
+                    <div>Aucun résultat trouvé avec ces filtres.</div>
+                )}
+                
+                {!loading && filteredPeople.length > 0 && (
+                    <>
+                        <FilteredResult
+                            people={filteredPeople}
+                            textToCopy={textToCopy}
+                            onCopy={handleCopyToClipboard}
+                        />
+                        
+                        {selectedPeople.size > 0 && (
+                            <BulkActionsBar
+                                selectedCount={selectedPeople.size}
+                                onSelectAll={handleSelectAll}
+                                onDeselectAll={handleDeselectAll}
+                                onBulkEdit={() => setIsBulkEditModalOpen(true)}
+                                onBulkDelete={handleDeleteSelected}
+                            />
+                        )}
+                        
+                        <PersonList
+                            people={filteredPeople}
+                            onSelect={handleSelectPerson}
+                            selectedPeople={selectedPeople}
+                            showActions={false}
+                        />
+                    </>
+                )}
+            </div>
+
+            {/* Modals */}
+            <BulkEditTagsModal
+                isOpen={isBulkEditModalOpen}
+                onClose={() => setIsBulkEditModalOpen(false)}
+                onUpdateTags={handleBulkUpdateTags}
+                availableTags={tagNames}
+                onAddNewTag={handleAddNewTagToSystem}
+            />
+
+            {/* Overlay de loading pour les opérations */}
+            {operationLoading && (
+                <div className="loading-overlay">
+                    <div className="loading-spinner">Opération en cours...</div>
+                </div>
             )}
-        </>
+        </div>
     );
 };
 
