@@ -8,6 +8,7 @@ import ImportCSV from '../components/ImportCSV';
 import TagCreator from '../components/TagCreator';
 import BulkActionsBar from '../components/BulkActionsBar';
 import BulkEditTagsModal from '../components/BulkEditTagsModal';
+import CollapsibleSection from '../components/CollapsibleSection';
 
 const ContactsPage = () => {
     const [people, setPeople] = useState([]);
@@ -209,11 +210,19 @@ const ContactsPage = () => {
 
     return (
         <>
-            <AddPersonForm onAddPerson={handleAddPerson} existingTags={allUniqueTags} />
-            <TagCreator onAddNewTag={handleAddNewTagToSystem} />
-            <ImportCSV onImport={handleImport} />
-            <section>
-                <h2>Votre Liste de Contacts</h2>
+            <CollapsibleSection title="Ajouter une personne">
+                <AddPersonForm onAddPerson={handleAddPerson} existingTags={allUniqueTags} />
+            </CollapsibleSection>
+            
+            <CollapsibleSection title="Créer des tags">
+                <TagCreator onAddNewTag={handleAddNewTagToSystem} />
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Importer un CSV">
+                <ImportCSV onImport={handleImport} />
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Votre Liste de Contacts">
                 <BulkActionsBar 
                     selectedCount={selectedPeople.size}
                     totalCount={people.length}
@@ -226,9 +235,9 @@ const ContactsPage = () => {
                     people={people} 
                     selectedIds={Array.from(selectedPeople)}
                     onToggleSelect={handleSelectPerson}
-                    showActions={false} // On cache les actions individuelles comme sur GenerationPage
+                    showActions={false}
                 />
-            </section>
+            </CollapsibleSection>
             
             {isBulkEditModalOpen && (
                 <BulkEditTagsModal

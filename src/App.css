@@ -40,3 +40,39 @@
   display: flex;
   justify-content: space-between;
 }
+
+.collapsible-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  background-color: #f7f7f7;
+}
+
+.collapsible-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.collapsible-header .toggle-button {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.collapsible-content {
+  padding: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
