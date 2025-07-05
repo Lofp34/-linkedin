@@ -43,20 +43,33 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
-  // This state is now managed here for the global Settings Modal
+  // This state now holds objects { name: string, is_priority: boolean }
   const [allUniqueTags, setAllUniqueTags] = useState([]);
-
 
   const fetchAllTags = useCallback(async () => {
     if (!session) return;
     try {
-      const { data: tagsData, error: tagsError } = await supabase
+      // Try to fetch with the new 'is_priority' column
+      let { data: tagsData, error: tagsError } = await supabase
         .from('tags')
-        .select('name');
-      if (tagsError) throw tagsError;
-      setAllUniqueTags(tagsData.map(t => t.name).sort());
+        .select('name, is_priority');
+
+      // If it fails, fall back to the old query
+      if (tagsError) {
+        console.warn("Could not fetch 'is_priority'. Please run the migration. Falling back to names only.");
+        const { data: fallbackData, error: fallbackError } = await supabase.from('tags').select('name');
+        
+        if (fallbackError) throw fallbackError;
+
+        // Map the old data structure to the new one
+        tagsData = fallbackData.map(tag => ({ name: tag.name, is_priority: false }));
+      }
+      
+      setAllUniqueTags(tagsData || []);
+
     } catch (error) {
-      console.error("Error fetching tags for settings:", error);
+      console.error("Error fetching tags:", error);
+      setAllUniqueTags([]); // On critical error, ensure it's an empty array
     }
   }, [session]);
 
@@ -123,6 +136,26 @@ function App() {
     }
   };
 
+  const handleTogglePriority = async (tagName, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('tags')
+        .update({ is_priority: newStatus })
+        .eq('name', tagName);
+      
+      if (error) throw error;
+
+      // Optimistically update the UI to feel instant
+      setAllUniqueTags(prevTags =>
+        prevTags.map(tag =>
+          tag.name === tagName ? { ...tag, is_priority: newStatus } : tag
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling tag priority:", error);
+    }
+  };
+
   // The rest of the logic (data fetching, handlers) will be moved
   // to the relevant pages or a shared context later.
   // For now, let's just set up the routes.
@@ -168,6 +201,7 @@ function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         tags={allUniqueTags}
         onDeleteTag={handleDeleteTag}
+        onTogglePriority={handleTogglePriority}
       />
     </>
   );

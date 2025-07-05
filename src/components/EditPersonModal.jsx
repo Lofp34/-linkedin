@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Tag from './Tag';
 
 const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCreateTags }) => {
@@ -8,21 +8,32 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
   const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
-    if (person) {
+    if (person && existingTags) {
       setFirstname(person.firstname);
       setLastname(person.lastname);
-      setPersonTags(person.tags || []);
+      const initialTags = existingTags.filter(tagObject => person.tags?.includes(tagObject.name));
+      setPersonTags(initialTags);
     }
-    // This effect should ONLY run when we open the modal for a NEW person.
-    // We listen to person.id to prevent re-renders from erasing local state.
-  }, [person?.id]);
+  }, [person?.id, existingTags]);
+
+  useEffect(() => {
+    if (person && existingTags) {
+       const updatedTags = existingTags.filter(tagObject => person.tags?.includes(tagObject.name));
+       setPersonTags(updatedTags);
+    }
+  }, [person?.tags, existingTags]);
 
   if (!person) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const updatedPerson = { ...person, firstname: firstname.trim(), lastname: lastname.trim(), tags: personTags };
-    onUpdate(updatedPerson); // This will close the modal by default
+    const updatedPerson = { 
+      ...person, 
+      firstname: firstname.trim(), 
+      lastname: lastname.trim(), 
+      tags: personTags.map(t => t.name)
+    };
+    onUpdate(updatedPerson);
   };
 
   const handleSaveAndCreate = () => {
@@ -31,27 +42,31 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
       .filter(tag => tag.length > 0);
 
     if (newTagNames.length > 0 && onSaveAndCreateTags) {
-      const personWithCurrentState = { ...person, firstname: firstname.trim(), lastname: lastname.trim(), tags: personTags };
+      const personWithCurrentState = { 
+          ...person, 
+          firstname: firstname.trim(), 
+          lastname: lastname.trim(), 
+          tags: personTags.map(t => t.name)
+      };
       onSaveAndCreateTags(personWithCurrentState, newTagNames);
-      setNewTag(''); // Clear the input
+      setNewTag('');
     }
   };
 
-  const handleToggleTag = (tag) => {
-    setPersonTags(prevTags => 
-      prevTags.includes(tag)
-        ? prevTags.filter(t => t !== tag)
-        : [...prevTags, tag]
+  const handleToggleTag = (tagObject) => {
+    setPersonTags(prevTags =>
+      prevTags.some(t => t.name === tagObject.name)
+        ? prevTags.filter(t => t.name !== tagObject.name)
+        : [...prevTags, tagObject]
     );
   };
-  
-  // Update local state if the person prop changes from the parent
-  // This is how the modal stays in sync after a save-and-create action
-  useEffect(() => {
-    if (person) {
-      setPersonTags(person.tags || []);
-    }
-  }, [person?.tags]);
+
+  const [priorityTags, otherTags] = useMemo(() => {
+      const assignedTagNames = new Set(personTags.map(t => t.name));
+      const priority = existingTags.filter(t => t.is_priority && !assignedTagNames.has(t.name));
+      const other = existingTags.filter(t => !t.is_priority && !assignedTagNames.has(t.name));
+      return [priority, other];
+  }, [existingTags, personTags]);
 
   return (
     <div className="modal">
@@ -84,21 +99,40 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onSaveAndCr
             <div className="tags-container" style={{ minHeight: '30px', border: '1px solid var(--border-color)', borderRadius: '5px', padding: '10px', marginBottom: '10px' }}>
               {personTags.length > 0 ? (
                 personTags.map(tag => (
-                  <Tag key={tag} isActive={true} onClick={() => handleToggleTag(tag)}>{tag}</Tag>
+                  <Tag 
+                    key={tag.name} 
+                    isActive={true} 
+                    onClick={() => handleToggleTag(tag)} 
+                    isPriority={tag.is_priority}
+                  >
+                    {tag.name}
+                  </Tag>
                 ))
               ) : (
                 <span style={{color: '#888'}}>Aucun tag assigné</span>
               )}
             </div>
           </div>
-          <div className="form-group">
-            <label>Cliquer pour assigner un tag existant</label>
-            <div className="tags-container">
-              {existingTags.filter(t => !personTags.includes(t)).map(tag => (
-                <Tag key={tag} isActive={false} onClick={() => handleToggleTag(tag)}>{tag}</Tag>
-              ))}
+          {priorityTags.length > 0 && (
+            <div className="form-group">
+              <label>Tags prioritaires</label>
+              <div className="tags-container">
+                {priorityTags.map(tag => (
+                  <Tag key={tag.name} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>{tag.name}</Tag>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+          {otherTags.length > 0 && (
+            <div className="form-group">
+              <label>Autres tags</label>
+              <div className="tags-container">
+                {otherTags.map(tag => (
+                  <Tag key={tag.name} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>{tag.name}</Tag>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="form-group">
             <label htmlFor="modal-new-tag">Ou créer, sauvegarder et assigner</label>
             <div className="input-group">

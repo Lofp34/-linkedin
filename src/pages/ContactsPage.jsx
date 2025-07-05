@@ -57,12 +57,19 @@ const ContactsPage = () => {
             }));
             setPeople(transformedPeople);
 
-            const { data: tagsData, error: tagsError } = await supabase
+            // Robust tags fetching
+            let { data: tagsData, error: tagsError } = await supabase
                 .from('tags')
-                .select('name');
+                .select('name, is_priority');
 
-            if (tagsError) throw tagsError;
-            setAllUniqueTags(tagsData.map(t => t.name).sort());
+            if (tagsError) {
+                console.warn("Could not fetch 'is_priority' in ContactsPage. Falling back.");
+                const { data: fallbackData, error: fallbackError } = await supabase.from('tags').select('name');
+                if (fallbackError) throw fallbackError;
+                tagsData = fallbackData.map(tag => ({ name: tag.name, is_priority: false }));
+            }
+            
+            setAllUniqueTags(tagsData || []);
 
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -235,29 +242,41 @@ const ContactsPage = () => {
         }
     };
 
-    const handleSaveAndCreateTags = async (personToUpdate, newTagNames) => {
-        // Step 1: Save the person's current state WITHOUT closing the modal
-        const updatedPerson = await handleUpdatePerson(personToUpdate, false);
+    const handleSaveAndCreateTags = async (personWithLocalChanges, newTagNames) => {
+        setLoading(true);
+        try {
+            // Step 1: Determine the final state by combining existing and new tags.
+            const finalTagList = [...new Set([...personWithLocalChanges.tags, ...newTagNames])];
+            const personToSave = { ...personWithLocalChanges, tags: finalTagList };
 
-        if (updatedPerson) {
-            // Step 2: Create the new tags
+            // Step 2: Create the new tags in the database. Supabase handles duplicates gracefully.
             const newTagsToInsert = newTagNames.map(name => ({ name }));
-            if (newTagsToInsert.length > 0) {
-                const { data: createdTags, error } = await supabase.from('tags').insert(newTagsToInsert).select();
-                if (error) {
-                    console.error("Error creating new tags:", error);
-                    return;
-                }
-                
-                // Step 3: Optimistically update the list of all available tags
-                if (createdTags) {
-                    const createdTagNames = createdTags.map(t => t.name);
-                    setAllUniqueTags(prev => [...new Set([...prev, ...createdTagNames])].sort());
-                }
+            const { data: createdTags, error: createError } = await supabase.from('tags').insert(newTagsToInsert).select();
+            if (createError && createError.code !== '23505') { // Ignore duplicate errors
+                throw createError;
+            }
+
+            // Step 3: Update the person with the complete and final list of tags.
+            // handleUpdatePerson already updates the 'people' state optimistically.
+            await handleUpdatePerson(personToSave, false); // false = don't close modal
+
+            // Step 4: Optimistically update the global list of all available tags with the new objects.
+            if (createdTags) {
+                const newTagObjects = createdTags.map(t => ({ name: t.name, is_priority: t.is_priority || false }));
+                setAllUniqueTags(prev => {
+                    const existingNames = new Set(prev.map(t => t.name));
+                    const trulyNewTags = newTagObjects.filter(t => !existingNames.has(t.name));
+                    return [...prev, ...trulyNewTags];
+                });
             }
             
-            // Step 4: Update the person being edited to keep the modal in sync
-            setEditingPerson(updatedPerson);
+            // Step 5: Update the person object in the modal to keep it perfectly in sync.
+            setEditingPerson(personToSave);
+
+        } catch (error) {
+            console.error("Error in save and create:", error);
+        } finally {
+            setLoading(false);
         }
     };
 

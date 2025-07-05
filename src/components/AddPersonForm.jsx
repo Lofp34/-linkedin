@@ -14,7 +14,7 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
       id: Date.now(),
       firstname: firstname.trim(),
       lastname: lastname.trim(),
-      tags: personTags
+      tags: personTags.map(t => t.name)
     };
     onAddPerson(newPerson);
 
@@ -25,11 +25,14 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
   };
 
   const handleToggleTag = (tag) => {
-    setPersonTags(prevTags => 
-      prevTags.includes(tag)
-        ? prevTags.filter(t => t !== tag)
-        : [...prevTags, tag]
-    );
+    setPersonTags(prevTags => {
+        const isAlreadySelected = prevTags.some(pt => pt.name === tag.name);
+        if (isAlreadySelected) {
+            return prevTags.filter(pt => pt.name !== tag.name);
+        } else {
+            return [...prevTags, tag];
+        }
+    });
   };
 
   return (
@@ -62,7 +65,9 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
             <div className="tags-container" style={{ minHeight: '30px', border: '1px solid var(--border-color)', borderRadius: '5px', padding: '10px', marginBottom: '10px' }}>
                 {personTags.length > 0 ? (
                     personTags.map(tag => (
-                        <Tag key={tag} isActive={true} onClick={() => handleToggleTag(tag)}>{tag}</Tag>
+                        <Tag key={tag.name} isActive={true} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>
+                            {tag.name}
+                        </Tag>
                     ))
                 ) : (
                     <span style={{color: '#888'}}>Aucun tag assigné</span>
@@ -73,8 +78,12 @@ const AddPersonForm = ({ onAddPerson, existingTags }) => {
         <div className="form-group">
             <label>Cliquer pour assigner un tag existant</label>
             <div className="tags-container">
-                {existingTags.filter(t => !personTags.includes(t)).map(tag => (
-                    <Tag key={tag} isActive={false} onClick={() => handleToggleTag(tag)}>{tag}</Tag>
+                {existingTags
+                    .filter(tag => !personTags.some(pt => pt.name === tag.name))
+                    .map(tag => (
+                        <Tag key={tag.name} isActive={false} onClick={() => handleToggleTag(tag)} isPriority={tag.is_priority}>
+                           {tag.name}
+                        </Tag>
                 ))}
             </div>
         </div>
