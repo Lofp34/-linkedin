@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { TAG_CATEGORIES } from '../contexts/ContactsContext';
+import CollapsibleTagSection from './CollapsibleTagSection';
 
 const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, onUpdateTagCategory }) => {
   const [modalSize, setModalSize] = useState({ width: 800, height: 600 });
@@ -108,8 +109,12 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
                 const categoryTags = tagsByCategory[category] || [];
                 
                 return (
-                  <div key={category} className="category-section">
-                    <h4 className="category-title">{category} ({categoryTags.length})</h4>
+                  <CollapsibleTagSection
+                    key={category}
+                    title={category}
+                    itemCount={categoryTags.length}
+                    isOpenByDefault={false}
+                  >
                     <Droppable droppableId={category}>
                       {(provided, snapshot) => (
                         <div
@@ -170,7 +175,7 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
                         </div>
                       )}
                     </Droppable>
-                  </div>
+                  </CollapsibleTagSection>
                 );
               })}
             </div>
@@ -233,22 +238,7 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
             padding-right: 10px;
           }
           
-          .category-section {
-            margin-bottom: 2rem;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid var(--primary-color);
-          }
-          
-          .category-title {
-            margin: 0;
-            padding: 1rem 1rem 0.5rem 1rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
+
           
           .tags-drop-zone {
             min-height: 60px;
