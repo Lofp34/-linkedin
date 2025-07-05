@@ -8,8 +8,6 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
   const modalRef = useRef(null);
   const resizeRef = useRef(null);
 
-  if (!isOpen) return null;
-
   // Gestionnaire de redimensionnement
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -78,6 +76,9 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
     }
   };
 
+  // Condition de rendu APRÈS tous les hooks
+  if (!isOpen) return null;
+
   return (
     <div className="modal">
       <div 
@@ -96,6 +97,7 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
         <p>
           <strong>💡 Astuce :</strong> Glissez-déposez les tags pour changer leur catégorie !<br/>
           <strong>🔧 Redimensionnement :</strong> Utilisez la poignée en bas à droite pour agrandir la fenêtre.<br/>
+          <strong>⚡ Rapide :</strong> Utilisez le dropdown "Catégorie" pour changer directement la catégorie.<br/>
           Cliquez sur l'étoile pour marquer comme prioritaire. Cliquez sur "Supprimer" pour effacer.
         </p>
         
@@ -139,12 +141,24 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
                                           &#9733;
                                         </button>
                                         <span className="tag-name">{tag.name}</span>
-                                        <button 
-                                          className="button danger" 
-                                          onClick={() => handleDelete(tag.name)}
-                                        >
-                                          Supprimer
-                                        </button>
+                                        <div className="tag-actions">
+                                          <select
+                                            className="category-selector"
+                                            value={tag.category || 'Non classée'}
+                                            onChange={(e) => onUpdateTagCategory(tag.name, e.target.value)}
+                                            title="Changer la catégorie"
+                                          >
+                                            {TAG_CATEGORIES.map(cat => (
+                                              <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                          </select>
+                                          <button 
+                                            className="button danger" 
+                                            onClick={() => handleDelete(tag.name)}
+                                          >
+                                            Supprimer
+                                          </button>
+                                        </div>
                                       </div>
                                     </li>
                                   )}
@@ -295,6 +309,33 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
             flex-grow: 1;
             margin: 0 1rem;
             font-weight: 500;
+          }
+          
+          .tag-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          
+          .category-selector {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background-color: white;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+            max-width: 120px;
+          }
+          
+          .category-selector:hover {
+            border-color: var(--primary-color);
+          }
+          
+          .category-selector:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
           }
           
           .priority-toggle {
