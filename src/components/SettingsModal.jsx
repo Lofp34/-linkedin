@@ -3,9 +3,11 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { TAG_CATEGORIES } from '../contexts/ContactsContext';
 import CollapsibleTagSection from './CollapsibleTagSection';
 
-const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, onUpdateTagCategory }) => {
+const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, onUpdateTagCategory, onUpdateTagName }) => {
   const [modalSize, setModalSize] = useState({ width: 800, height: 600 });
   const [isResizing, setIsResizing] = useState(false);
+  const [editingTagName, setEditingTagName] = useState(null);
+  const [newTagName, setNewTagName] = useState('');
   const modalRef = useRef(null);
   const resizeRef = useRef(null);
 
@@ -44,6 +46,30 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
   const handleDelete = (tagName) => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer le tag "${tagName}" ? Il sera retiré de toutes les fiches de contact.`)) {
       onDeleteTag(tagName);
+    }
+  };
+
+  const handleStartEdit = (tagName) => {
+    setEditingTagName(tagName);
+    setNewTagName(tagName);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTagName(null);
+    setNewTagName('');
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!newTagName.trim() || newTagName.trim() === editingTagName) {
+      handleCancelEdit();
+      return;
+    }
+
+    try {
+      await onUpdateTagName(editingTagName, newTagName.trim());
+      handleCancelEdit();
+    } catch (error) {
+      alert(error.message || "Erreur lors de la modification du nom du tag.");
     }
   };
 
@@ -99,6 +125,7 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
           <strong>💡 Astuce :</strong> Glissez-déposez les tags pour changer leur catégorie !<br/>
           <strong>🔧 Redimensionnement :</strong> Utilisez la poignée en bas à droite pour agrandir la fenêtre.<br/>
           <strong>⚡ Rapide :</strong> Utilisez le dropdown "Catégorie" pour changer directement la catégorie.<br/>
+          <strong>✏️ Modification :</strong> Cliquez sur "Modifier" pour corriger le nom d'un tag.<br/>
           Cliquez sur l'étoile pour marquer comme prioritaire. Cliquez sur "Supprimer" pour effacer.
         </p>
         
@@ -145,25 +172,66 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
                                         >
                                           &#9733;
                                         </button>
-                                        <span className="tag-name">{tag.name}</span>
-                                        <div className="tag-actions">
-                                          <select
-                                            className="category-selector"
-                                            value={tag.category || 'Non classée'}
-                                            onChange={(e) => onUpdateTagCategory(tag.name, e.target.value)}
-                                            title="Changer la catégorie"
-                                          >
-                                            {TAG_CATEGORIES.map(cat => (
-                                              <option key={cat} value={cat}>{cat}</option>
-                                            ))}
-                                          </select>
-                                          <button 
-                                            className="button danger" 
-                                            onClick={() => handleDelete(tag.name)}
-                                          >
-                                            Supprimer
-                                          </button>
-                                        </div>
+                                        {editingTagName === tag.name ? (
+                                          <div className="edit-tag-section">
+                                            <input
+                                              type="text"
+                                              value={newTagName}
+                                              onChange={(e) => setNewTagName(e.target.value)}
+                                              className="edit-tag-input"
+                                              autoFocus
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleConfirmEdit();
+                                                if (e.key === 'Escape') handleCancelEdit();
+                                              }}
+                                            />
+                                            <div className="edit-tag-buttons">
+                                              <button 
+                                                className="button small success" 
+                                                onClick={handleConfirmEdit}
+                                                title="Confirmer (Entrée)"
+                                              >
+                                                ✓
+                                              </button>
+                                              <button 
+                                                className="button small secondary" 
+                                                onClick={handleCancelEdit}
+                                                title="Annuler (Échap)"
+                                              >
+                                                ✕
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <span className="tag-name">{tag.name}</span>
+                                            <div className="tag-actions">
+                                              <select
+                                                className="category-selector"
+                                                value={tag.category || 'Non classée'}
+                                                onChange={(e) => onUpdateTagCategory(tag.name, e.target.value)}
+                                                title="Changer la catégorie"
+                                              >
+                                                {TAG_CATEGORIES.map(cat => (
+                                                  <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                              </select>
+                                              <button 
+                                                className="button small secondary" 
+                                                onClick={() => handleStartEdit(tag.name)}
+                                                title="Modifier le nom"
+                                              >
+                                                Modifier
+                                              </button>
+                                              <button 
+                                                className="button small danger" 
+                                                onClick={() => handleDelete(tag.name)}
+                                              >
+                                                Supprimer
+                                              </button>
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                     </li>
                                   )}
@@ -301,6 +369,33 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
             font-weight: 500;
           }
           
+          .edit-tag-section {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 1rem;
+          }
+          
+          .edit-tag-input {
+            flex-grow: 1;
+            padding: 4px 8px;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+          }
+          
+          .edit-tag-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+          }
+          
+          .edit-tag-buttons {
+            display: flex;
+            gap: 4px;
+          }
+          
           .tag-actions {
             display: flex;
             gap: 8px;
@@ -349,6 +444,22 @@ const SettingsModal = ({ isOpen, onClose, tags, onDeleteTag, onTogglePriority, o
             padding: 5px 10px;
             font-size: 0.9em;
             border-radius: 4px;
+          }
+          
+          .button.small {
+            padding: 4px 8px;
+            font-size: 0.8em;
+            border-radius: 3px;
+            min-width: auto;
+          }
+          
+          .button.success {
+            background-color: #28a745;
+            color: white;
+          }
+          
+          .button.success:hover {
+            background-color: #218838;
           }
           
           /* Empêcher la sélection de texte pendant le redimensionnement */
