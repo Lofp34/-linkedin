@@ -1,15 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const CollapsibleSection = ({ title, children }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleOpen = () => {
-    setIsOpen(!isOpen);
-  };
-
+const CollapsibleSection = ({ title, children, isOpen, onToggle }) => {
   return (
     <section className="collapsible-section">
-      <div className="collapsible-header" onClick={toggleOpen}>
+      <div className="collapsible-header" onClick={onToggle}>
         <h2>{title}</h2>
         <button className="toggle-button">{isOpen ? 'Réduire' : 'Déplier'}</button>
       </div>

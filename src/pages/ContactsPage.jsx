@@ -21,6 +21,10 @@ const ContactsPage = () => {
     const [selectedPeople, setSelectedPeople] = useState(new Set());
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
     const [editingPerson, setEditingPerson] = useState(null);
+    const [openSections, setOpenSections] = useState({
+        // Let's keep the contact list open by default for better UX
+        contactList: true, 
+    });
 
     useEffect(() => {
         // We need to get the session to make sure we're authenticated before fetching
@@ -237,7 +241,9 @@ const ContactsPage = () => {
             console.error("Error updating person:", error);
         } finally {
             setLoading(false);
-            setEditingPerson(null); // Close modal
+            setEditingPerson(null);
+            // Ensure the contact list is open after an edit
+            setOpenSections(prev => ({ ...prev, contactList: true }));
         }
     };
     
@@ -254,25 +260,48 @@ const ContactsPage = () => {
         }
     };
 
+    const toggleSection = (sectionName) => {
+        setOpenSections(prev => ({
+            ...prev,
+            [sectionName]: !prev[sectionName]
+        }));
+    };
+
     if (loading) {
         return <div>Chargement de vos contacts...</div>
     }
 
     return (
         <>
-            <CollapsibleSection title="Ajouter une personne">
+            <CollapsibleSection 
+                title="Ajouter une personne"
+                isOpen={openSections.addPerson}
+                onToggle={() => toggleSection('addPerson')}
+            >
                 <AddPersonForm onAddPerson={handleAddPerson} existingTags={allUniqueTags} />
             </CollapsibleSection>
             
-            <CollapsibleSection title="Créer des tags">
+            <CollapsibleSection 
+                title="Créer des tags"
+                isOpen={openSections.createTag}
+                onToggle={() => toggleSection('createTag')}
+            >
                 <TagCreator onAddNewTag={handleAddNewTagToSystem} />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Importer un CSV">
+            <CollapsibleSection 
+                title="Importer un CSV"
+                isOpen={openSections.importCsv}
+                onToggle={() => toggleSection('importCsv')}
+            >
                 <ImportCSV onImport={handleImport} />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Votre Liste de Contacts">
+            <CollapsibleSection 
+                title="Votre Liste de Contacts"
+                isOpen={openSections.contactList}
+                onToggle={() => toggleSection('contactList')}
+            >
                 <BulkActionsBar 
                     selectedCount={selectedPeople.size}
                     totalCount={people.length}
@@ -297,6 +326,7 @@ const ContactsPage = () => {
                     onUpdate={handleUpdatePerson}
                     onCancel={() => setEditingPerson(null)}
                     existingTags={allUniqueTags}
+                    onAddNewTag={handleAddNewTagToSystem}
                 />
             )}
 

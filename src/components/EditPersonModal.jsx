@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Tag from './Tag';
 
-const EditPersonModal = ({ person, onUpdate, onCancel, existingTags }) => {
+const EditPersonModal = ({ person, onUpdate, onCancel, existingTags, onAddNewTag }) => {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [personTags, setPersonTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
     if (person) {
@@ -20,6 +21,21 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags }) => {
     e.preventDefault();
     const updatedPerson = { ...person, firstname: firstname.trim(), lastname: lastname.trim(), tags: personTags };
     onUpdate(updatedPerson);
+  };
+
+  const handleCreateNewTag = () => {
+    const tagNames = newTag.split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+
+    if (tagNames.length > 0 && onAddNewTag) {
+      tagNames.forEach(tagName => {
+        onAddNewTag(tagName);
+        // Automatically add the new tag to the person
+        handleToggleTag(tagName);
+      });
+      setNewTag('');
+    }
   };
 
   const handleToggleTag = (tag) => {
@@ -76,8 +92,23 @@ const EditPersonModal = ({ person, onUpdate, onCancel, existingTags }) => {
               ))}
             </div>
           </div>
-          <button type="submit" className="button">Enregistrer</button>
-          <button type="button" className="button secondary" onClick={onCancel} style={{ marginLeft: '10px' }}>Annuler</button>
+          <div className="form-group">
+            <label htmlFor="modal-new-tag">Ou créer un nouveau tag</label>
+            <div className="input-group">
+              <input
+                type="text"
+                id="modal-new-tag"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder="Nom du nouveau tag..."
+              />
+              <button type="button" onClick={handleCreateNewTag} className="button">Créer</button>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button type="submit" className="button">Enregistrer</button>
+            <button type="button" className="button secondary" onClick={onCancel}>Annuler</button>
+          </div>
         </form>
       </div>
     </div>
